@@ -1,15 +1,15 @@
 .386
-.model flat, stdcall
+.MODEL flat, stdcall
 option casemap:none
 
 includelib msvcrt.lib
 printf PROTO C :ptr sbyte, :VARARG
 
-.data
+.DATA
 szMsg sbyte 'Hello' ,0ah,0
 
 
-.code
+.CODE
 main proc
 	invoke printf,offset szMsg
 	ret
