@@ -1,18 +1,20 @@
 .386
 .model flat,stdcall
 option casemap:NONE
-MessageBoxA PROTO :dword, :dword, :dword, :dword
-MessageBox equ <MessageBoxA>
-includelib user32.lib
-NULL equ 0
-MB_OK equ 0
-.stack 4096
+includelib msvcrt.lib
+printf proto c :dword,:vararg
 .DATA
-SzTitle byte 'Hi',0
-szMsg byte 'asdfasf',0
-.CODE
+fact dword ?
+N = 2
+szfmt byte '%d = %d', 0ah, 0
+.code
 start:
-
-    invoke MessageBox,NULL,offset szMsg,offset SzTitle,MB_OK
+    mov ecx,N
+    mov eax,1
+    e10: 
+        imul eax,ecx
+        loop e10
+    mov fact,eax
+    invoke printf, offset szfmt,N,fact
     ret
 end start
