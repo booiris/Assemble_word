@@ -13,18 +13,23 @@ in_msg_num byte '输入数字', 0ah, 0
 
 in_format_n byte '%d', 0
 in_format_num byte '%s', 0
+in_format_char byte '%c', 0
 
-out_format_int byte '%d', 0ah, 0
+out_format_int byte '%d', 0
 out_format_num_str byte '%s', 0ah, 0
-out_format_float byte '%f', 0ah, 0 
+out_format_float byte '%.2f', 20h, 0 
+out_format_enter byte 0ah, 0
+out_format_negtive byte '-', 0
+
 
 flag dword 1
 
 n1 dword ?
-num1_str dword ?
+num1_str byte 2000 dup(0)
 n2 dword ?
-num2_str dword ?
-two dword 2.0
+num2_str byte 2000 dup(0)
+two real4 2.0
+tttt byte ?
 
 cp STRUCT
     x dword ?
@@ -36,8 +41,40 @@ num2 cp 2000 dup({})
 temp_num cp 2000 dup({})
 
 ans dword 20005 dup(?)
+ans_len dword ?
 
 .code
+
+reverse_input PROC C str_p:dword
+    mov esi, str_p
+    mov ecx, 0
+    main_loop:
+        mov eax, [esi]
+        cmp eax, 0
+        jz loop_end
+        inc ecx
+        inc esi
+        jmp main_loop
+    loop_end:
+        mov esi, str_p
+        mov ebx, 0
+    loop1:
+        mov al, [esi+ebx]
+        mov dl, [esi+ecx-1]
+        mov [esi+ecx-1], al
+        mov [esi+ebx], dl
+        inc ebx
+        dec ecx
+        cmp ecx, ebx
+        jle loop1_end
+        jmp loop1
+
+    invoke printf, offset out_format_num_str,offset num1_str
+    loop1_end:
+        ret
+
+
+reverse_input ENDP
 
 int_to_float PROC C int_num:dword 
     mov edx, int_num
@@ -120,6 +157,7 @@ outputnum PROC C num_len:dword,num_p:dword
         add edi, 8
         pop ecx
         loop arr_loop
+    invoke printf, offset out_format_enter
     ret
 outputnum ENDP
 
@@ -145,11 +183,10 @@ cp_mul PROC C cp1:cp, cp2:cp
 cp_mul ENDP
 
 fft PROC C num_len:dword, num_p:dword, inv:dword
-    LOCAL mid:dword,temp_cp:cp,max_n:real4,float_inv:real4,t1:cp,t2:cp
+    LOCAL mid:dword,temp_cp:cp,max_n:real4,float_inv:real4,t1:cp,t2:cp,aaaa:real8
     cmp num_len, 1
     je done
     mov esi, num_p
-    mov eax, [esi]
     mov eax, num_len
     sar eax, 1
     mov mid, eax
@@ -190,12 +227,19 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
     sal eax, 3
     mov esi, num_p
     add esi, eax 
-    invoke fft, mid, esi , inv
+    invoke fft, mid, esi, inv
 
     invoke int_to_float, num_len
     mov max_n, eax
     invoke int_to_float, inv
     mov float_inv, eax
+
+    ; invoke printf, offset out_format_int, num_len
+    ; invoke printf, offset out_format_enter
+    ; invoke outputnum, n1, offset num1
+    ; mov esi, offset num1
+    ; add esi, 4
+    ; invoke outputnum, n1, esi
 
     mov edi, offset temp_num
     mov esi, num_p
@@ -207,7 +251,14 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
         fldpi
 
         fmul st(0),st(1)
-        fmul two
+        ; push edx
+        ; fst aaaa
+        ; invoke printf, offset out_format_float, aaaa
+        ; pop edx
+
+        fld two
+
+        fmulp st(1),st(0)
         fdiv max_n
 
         fld st(0)
@@ -266,6 +317,7 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
         jmp main_loop
 
     main_loop_break:
+        fstp max_n
         mov ecx, num_len
     temp_2_copy:
         mov eax, [edi+8*ecx-8]
@@ -280,25 +332,22 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
 
 fft ENDP
 
-output_ans PROC C ans_len:dword, ans_p:dword
-    LOCAL max_n:real4, t4:real4, t8:real8
-    invoke int_to_float, ans_len
-    mov max_n, eax
-    finit
-    mov edi, ans_p
-    mov ecx, ans_len
-    arr_loop:
-        push ecx
-        mov eax, [edi]
-        mov t4, eax
-        fld t4
-        fdiv max_n
-        fstp t8
-        invoke printf, offset out_format_float, t8
-        add edi, 8
-        pop ecx
-        loop arr_loop
-    ret
+output_ans PROC C 
+    cmp flag,0
+    jg nonegtive
+    invoke printf, offset out_format_negtive
+
+    nonegtive:
+        mov edi, offset ans
+        mov ecx, ans_len
+        arr_loop:
+            push ecx
+            mov eax, [edi+4*ecx-4]
+            invoke printf, offset out_format_int, eax
+            pop ecx
+            loop arr_loop
+        invoke printf, offset out_format_enter
+        ret
 output_ans ENDP
 
 key PROC C num_len:dword
@@ -336,21 +385,14 @@ key PROC C num_len:dword
 
 key ENDP
 
-float_to_int PROC C num:dword
-    xor eax, eax
-    mov edx, num
-    mov ecx, edx
-    
-    ret
-
-float_to_int ENDP
 
 get_ans PROC C num_len:dword
-    LOCAL temp:dword
+    LOCAL temp:dword, n:dword
     mov ecx, num_len
+    mov edi, offset ans
+    mov esi, offset num1
     loop1:
         push ecx
-        mov esi, offset num1
         mov eax, [esi]
         mov temp, eax
         fld temp
@@ -358,23 +400,44 @@ get_ans PROC C num_len:dword
         invoke int_to_float, num_len
         mov temp, eax
         fdiv temp
+        fistp temp
+        mov eax, temp
+        mov [edi], eax
 
-        fld1
-        fdiv two
-        faddp st(1),st(0)
-        fstp temp
-
-        invoke float_to_int, temp
-        
-        xor edx, edx
-        mov ebx, 10
-        div ebx
-
+        add edi, 4
         add esi, 8
         pop ecx
         loop loop1
 
-    ret
+    mov esi, offset ans
+    mov ebx, 10
+    mov ecx, num_len
+    loop3:
+        xor edx,edx
+        mov eax, [esi]
+        div ebx
+        mov [esi], edx
+        add [esi+4], eax
+        add esi, 4
+        loop loop3
+    mov ecx, num_len
+    mov esi, offset ans
+    loop4:
+        mov eax, [esi+4*ecx-4]
+        cmp eax, 0
+        jnz loop4_end
+        dec ecx
+        cmp ecx, 0
+        jz zero_end
+        jmp loop4
+    loop4_end:
+        mov ans_len, ecx
+        jmp done
+    zero_end:
+        mov ans_len, 1
+        jmp done
+    done:
+        ret
 
 get_ans ENDP
 
@@ -382,20 +445,18 @@ start:
     invoke printf, offset in_msg_num
     invoke scanf, offset in_format_num, offset num1_str
 
-    invoke printf,offset out_format_num_str,offset num1_str
-    
+    invoke reverse_input, offset num1_str
+
     invoke changenum, offset num1_str, offset num1
     mov n1, eax
-    invoke outputnum, n1, offset num1
 
     invoke printf, offset in_msg_num
     invoke scanf, offset in_format_num, offset num2_str
 
-    invoke printf,offset out_format_num_str,offset num2_str
+    invoke reverse_input, offset num2_str
     
     invoke changenum, offset num2_str, offset num2
     mov n2, eax
-    invoke outputnum, n2, offset num2
 
     invoke get_maxn, n1, n2
     mov n1, eax
@@ -408,7 +469,10 @@ start:
     invoke fft, n1, offset num1, -1
 
     invoke get_ans, n1
+    invoke output_ans
 
-    ; TODO 写完添加暂停 
+    invoke scanf, offset in_format_char, offset tttt
+    invoke scanf, offset in_format_char, offset tttt
+
     ret
 end start
