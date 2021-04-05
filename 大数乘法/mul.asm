@@ -18,11 +18,13 @@ out_format_int byte '%d', 0ah, 0
 out_format_num_str byte '%s', 0ah, 0
 out_format_float byte '%f', 0ah, 0 
 
+flag dword 1
+
 n1 dword ?
 num1_str dword ?
 n2 dword ?
 num2_str dword ?
-flag sbyte 1
+two dword 2.0
 
 cp STRUCT
     x dword 0.0
@@ -31,10 +33,11 @@ cp ENDS
 
 num1 cp 1000 dup({})
 num2 cp 1000 dup({})
+temp_num cp 1000 dup({})
 
 .code
 
-int_to_float PROC C int_num:dword ;由于输入是0-9，可以打表，但为了学习，还是写一写这个函数
+int_to_float PROC C int_num:dword 
     mov edx, int_num
     xor eax, eax
     test edx, edx ; 判断 edx 是否为0
@@ -66,7 +69,7 @@ changenum PROC C ,str_p:dword,num_p:dword
         xor edx, edx
         mov dl, [esi]
         cmp dl, 0
-        je arr_loop_break
+        je done
         cmp dl, '-'
         je negtive
         sub edx, '0'
@@ -76,21 +79,27 @@ changenum PROC C ,str_p:dword,num_p:dword
         inc n
         add edi, 8
         jmp arr_loop
-    arr_loop_break:
-        mov eax, 1
-    check_2_pow:
-        cmp eax, n
-        jge done
-        sal eax, 1
-        jmp check_2_pow
     negtive:
-        inc esi
         neg flag
+        inc esi
         jmp arr_loop
     done:
+        mov eax, n
         ret
+changenum ENDP    
     
-changenum ENDP
+get_maxn PROC C nn1:dword,nn2:dword
+    mov ecx, nn1
+    add ecx, nn2
+    mov eax, 1
+    main_loop:
+        cmp eax, ecx
+        jge done 
+        sal eax, 1
+        jmp main_loop
+    done:
+        ret
+get_maxn ENDP
 
 outputnum PROC C num_len:dword,num_p:dword
     LOCAL t4:real4,t8:real8
@@ -110,14 +119,183 @@ outputnum PROC C num_len:dword,num_p:dword
     ret
 outputnum ENDP
 
-fft PROC C 
+cp_mul PROC C cp1:cp, cp2:cp
+    LOCAL temp:cp
+    fld cp1.x
+    fmul cp2.x
+    fld cp1.y
+    fmul cp2.y
+    fsubp st(1),st(0)
+    fstp temp.x
+
+    fld cp1.x
+    fmul cp2.y
+    fld cp1.y
+    fmul cp2.x
+    faddp st(1),st(0)
+    fstp temp.y
+
+    fld temp.x
+    fld temp.y
+    ret
+cp_mul ENDP
+
+fft PROC C num_len:dword, num_p:dword, inv:dword
+    LOCAL mid:dword,temp_cp:cp,max_n:real4,float_inv:real4,t1:cp,t2:cp
+
+    cmp num_len, 1
+    je done
+    mov eax, num_len
+    sar eax, 1
+    mov mid, eax
+    mov ecx, eax
+    mov edx, 0
+    mov edi, offset temp_num
+    mov esi, num_p
+    temp_init:
+        push edx
+        mov ebx, edx ;edx i, ebx 2*i
+        sal ebx, 1
+        mov eax, [esi+8*ebx]
+        mov [edi+8*edx], eax
+        mov eax, [esi+8*ebx+4]
+        mov [edi+8*edx+4], eax
+
+        add edx, mid
+        add ebx, 1
+        mov eax, [esi+8*ebx]
+        mov [edi+8*edx], eax
+        mov eax, [esi+8*ebx+4]
+        mov [edi+8*edx+4], eax
+
+        pop edx
+        inc edx
+        loop temp_init
+
+    mov ecx, num_len
+    temp_1_copy:
+        mov eax, [edi+8*ecx-8]
+        mov [esi+8*ecx-8],eax
+
+        mov eax, [edi+8*ecx-4]
+        mov [esi+8*ecx-4],eax
+        loop temp_1_copy
+
+    invoke fft, mid, num_p ,inv
+    mov eax, mid
+    sal eax, 3
+    mov esi, num_p
+    add esi, eax 
+    invoke fft, mid, esi ,inv
+
+    invoke int_to_float, num_len
+    mov max_n, eax
+    invoke int_to_float, inv
+    mov float_inv, eax
+
+    mov edi, offset temp_num
+    mov esi, num_p
+    mov edx, 0
+    finit
+    fldz 
+    main_loop:
+        ; fpu 栈顶为i
+        fldpi
+        fmul st(0),st(1)
+        fmul two
+        fdiv max_n
+        
+        fst st(0)
+
+        fcos
+        fstp temp_cp.x
+        
+        fsin
+        fmul float_inv
+        fstp temp_cp.y
+
+        mov ebx, edx
+        add ebx, mid
+        mov eax, [esi+8*ebx]
+        mov t1.x, eax
+        mov eax, [esi+8*ebx+4]
+        mov t1.y, eax
+
+        invoke cp_mul, temp_cp, t1
+        fstp t2.y
+        fstp t2.x
+
+        mov eax, [esi+8*edx]
+        mov t1.x, eax
+        mov eax, [esi+8*edx+4]
+        mov t1.y, eax
+
+        fld t1.x
+        fadd t2.x
+        fstp temp_cp.x
+        mov eax, temp_cp.x
+        mov [edi+8*edx], eax
+        fld t1.y
+        fadd t2.y
+        fstp temp_cp.y
+        mov eax, temp_cp.y
+        mov [edi+8*edx+4], eax
+
+        fld t1.x
+        fsub t2.x
+        fstp temp_cp.x
+        mov eax, temp_cp.x
+        mov [edi+8*ebx], eax
+        fld t1.y
+        fsub t2.y
+        fstp temp_cp.y
+        mov eax, temp_cp.y
+        mov [edi+8*ebx+4], eax
+        inc edx
+        
+        cmp edx, mid
+        jz main_loop_break
+        jmp main_loop
+
+    main_loop_break:
+        mov ecx, num_len
+    temp_2_copy:
+        mov eax, [edi+8*ecx-8]
+        mov [esi+8*ecx-8],eax
+
+        mov eax, [edi+8*ecx-4]
+        mov [esi+8*ecx-4],eax
+        loop temp_2_copy 
+
+    done:
+        ret
 
 fft ENDP
+
+output_ans PROC C ans_len:dword, ans_p:dword
+    LOCAL max_n:real4, t4:real4, t8:real8
+    invoke int_to_float, ans_len
+    mov max_n, eax
+    finit
+    mov edi, ans_p
+    mov ecx, ans_len
+    arr_loop:
+        push ecx
+        mov eax, [edi]
+        mov t4, eax
+        fld t4
+        fdiv max_n
+        fstp t8
+        invoke printf, offset out_format_float, t8
+        add edi, 8
+        pop ecx
+        loop arr_loop
+    ret
+output_ans ENDP
 
 
 
 start:
-
     invoke printf, offset in_msg_num
     invoke scanf, offset in_format_num, offset num1_str
 
@@ -125,9 +303,7 @@ start:
     
     invoke changenum, offset num1_str, offset num1
     mov n1, eax
-    invoke printf, offset out_format_int, n1
     invoke outputnum, n1, offset num1
-    invoke printf, offset out_format_int, flag
 
     invoke printf, offset in_msg_num
     invoke scanf, offset in_format_num, offset num2_str
@@ -136,14 +312,28 @@ start:
     
     invoke changenum, offset num2_str, offset num2
     mov n2, eax
-    invoke printf, offset out_format_int, n2
     invoke outputnum, n2, offset num2
-    invoke printf, offset out_format_int, flag
 
-    ; invoke fft, n1, offset num1, f
-    ; invoke fft, n2, offset num2
+    invoke get_maxn, n1, n2
+    mov n1, eax
+    invoke printf, offset out_format_int, n1
 
 
+    invoke fft, n1, offset num1, 1
+    invoke fft, n1, offset num2, 1
+
+    invoke outputnum, n1, offset num1
+
+    ; mov ecx, n1
+
+    ; main_loop:
+
+        
+    ;     loop main_loop
+
+    ; invoke fft, n1, offset num1 , -1
+
+    ; invoke output_ans, n1, offset num1
 
     ; TODO 写完添加暂停 
     ret
