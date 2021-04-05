@@ -27,13 +27,15 @@ num2_str dword ?
 two dword 2.0
 
 cp STRUCT
-    x dword 0.0
-    y dword 0.0
+    x dword ?
+    y dword ?
 cp ENDS
 
-num1 cp 1000 dup({})
-num2 cp 1000 dup({})
-temp_num cp 1000 dup({})
+num1 cp 2000 dup({})
+num2 cp 2000 dup({})
+temp_num cp 2000 dup({})
+
+ans dword 20005 dup(?)
 
 .code
 
@@ -75,6 +77,8 @@ changenum PROC C ,str_p:dword,num_p:dword
         sub edx, '0'
         invoke int_to_float, edx
         mov [edi], eax
+        mov eax, 0
+        mov [edi+4], eax
         inc esi
         inc n
         add edi, 8
@@ -142,9 +146,10 @@ cp_mul ENDP
 
 fft PROC C num_len:dword, num_p:dword, inv:dword
     LOCAL mid:dword,temp_cp:cp,max_n:real4,float_inv:real4,t1:cp,t2:cp
-
     cmp num_len, 1
     je done
+    mov esi, num_p
+    mov eax, [esi]
     mov eax, num_len
     sar eax, 1
     mov mid, eax
@@ -176,17 +181,16 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
     temp_1_copy:
         mov eax, [edi+8*ecx-8]
         mov [esi+8*ecx-8],eax
-
         mov eax, [edi+8*ecx-4]
         mov [esi+8*ecx-4],eax
         loop temp_1_copy
 
-    invoke fft, mid, num_p ,inv
+    invoke fft, mid, num_p , inv
     mov eax, mid
     sal eax, 3
     mov esi, num_p
     add esi, eax 
-    invoke fft, mid, esi ,inv
+    invoke fft, mid, esi , inv
 
     invoke int_to_float, num_len
     mov max_n, eax
@@ -197,19 +201,20 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
     mov esi, num_p
     mov edx, 0
     finit
-    fldz 
+    fldz
     main_loop:
         ; fpu Õ»¶¥Îªi
         fldpi
+
         fmul st(0),st(1)
         fmul two
         fdiv max_n
-        
-        fst st(0)
+
+        fld st(0)
 
         fcos
         fstp temp_cp.x
-        
+
         fsin
         fmul float_inv
         fstp temp_cp.y
@@ -253,6 +258,9 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
         mov [edi+8*ebx+4], eax
         inc edx
         
+        fld1
+        faddp st(1),st(0)
+
         cmp edx, mid
         jz main_loop_break
         jmp main_loop
@@ -293,7 +301,82 @@ output_ans PROC C ans_len:dword, ans_p:dword
     ret
 output_ans ENDP
 
+key PROC C num_len:dword
+    LOCAL temp1:cp,temp2:cp
+    mov esi, offset num1
+    mov edi, offset num2
+    mov ecx, num_len
 
+    main_loop:
+        mov eax, [esi]
+        mov temp1.x, eax
+        mov eax, [esi+4]
+        mov temp1.y, eax
+
+        mov eax, [edi]
+        mov temp2.x, eax
+        mov eax, [edi+4]
+        mov temp2.y, eax
+
+        invoke cp_mul, temp1, temp2
+        fstp temp1.y
+        fstp temp1.x
+
+        mov eax, temp1.x
+        mov [esi], eax
+        mov eax, temp1.y
+        mov [esi+4], eax
+
+        add esi, 8
+        add edi, 8
+
+        loop main_loop
+
+    ret
+
+key ENDP
+
+float_to_int PROC C num:dword
+    xor eax, eax
+    mov edx, num
+    mov ecx, edx
+    
+    ret
+
+float_to_int ENDP
+
+get_ans PROC C num_len:dword
+    LOCAL temp:dword
+    mov ecx, num_len
+    loop1:
+        push ecx
+        mov esi, offset num1
+        mov eax, [esi]
+        mov temp, eax
+        fld temp
+
+        invoke int_to_float, num_len
+        mov temp, eax
+        fdiv temp
+
+        fld1
+        fdiv two
+        faddp st(1),st(0)
+        fstp temp
+
+        invoke float_to_int, temp
+        
+        xor edx, edx
+        mov ebx, 10
+        div ebx
+
+        add esi, 8
+        pop ecx
+        loop loop1
+
+    ret
+
+get_ans ENDP
 
 start:
     invoke printf, offset in_msg_num
@@ -316,24 +399,15 @@ start:
 
     invoke get_maxn, n1, n2
     mov n1, eax
-    invoke printf, offset out_format_int, n1
-
 
     invoke fft, n1, offset num1, 1
     invoke fft, n1, offset num2, 1
-
-    invoke outputnum, n1, offset num1
-
-    ; mov ecx, n1
-
-    ; main_loop:
-
         
-    ;     loop main_loop
+    invoke key, n1
 
-    ; invoke fft, n1, offset num1 , -1
+    invoke fft, n1, offset num1, -1
 
-    ; invoke output_ans, n1, offset num1
+    invoke get_ans, n1
 
     ; TODO Ð´ÍêÌí¼ÓÔÝÍ£ 
     ret
