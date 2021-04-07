@@ -21,26 +21,28 @@ out_format_float byte '%.2f', 20h, 0
 out_format_enter byte 0ah, 0
 out_format_negtive byte '-', 0
 
-
 flag dword 1
-
-n1 dword ?
-num1_str byte 2000 dup(0)
-n2 dword ?
-num2_str byte 2000 dup(0)
 two real4 2.0
-tttt byte ?
+
+.data?
 
 cp STRUCT
     x dword ?
     y dword ?
 cp ENDS
 
-num1 cp 2000 dup({})
-num2 cp 2000 dup({})
-temp_num cp 2000 dup({})
+n1 dword ?
+num1_str byte 10000 dup(?)
+n2 dword ?
+num2_str byte 10000 dup(?)
 
-ans dword 20005 dup(?)
+tttt byte ?
+
+num1 cp 10000 dup({})
+num2 cp 10000 dup({})
+temp_num cp 10000 dup({})
+
+ans dword 100005 dup(?)
 ans_len dword ?
 
 .code
