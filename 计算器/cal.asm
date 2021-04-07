@@ -18,15 +18,16 @@ h_main_window dword ?
 
 .const
 
-
+str_button byte 'button', 0
+str_button_text byte 'AAAA', 0
+str_class_name byte 'main_window_class', 0
+str_main_caption byte '¼ÆËãÆ÷', 0
+str_text byte 'a12312214', 0
 
 .code
 
-str_class_name byte 'myclass', 0
-str_main_caption byte 'adasdfsad', 0
-
 _proc_main_window PROC uses ebx edi esi, h_window, u_msg, w_param, l_param
-    LOCAL st_pt:PAINTSTRUCT
+    LOCAL st_ps:PAINTSTRUCT
     LOCAL st_rect:RECT
     LOCAL h_dc
 
@@ -36,7 +37,25 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, w_param, l_param
         invoke BeginPaint, h_window, addr st_ps
         mov h_dc ,eax
 
-        invoke GetClientRect, h_window, addr st_rect 
+        invoke GetClientRect, h_window, addr st_rect
+        invoke DrawText, h_dc, addr str_text, -1, addr st_rect, DT_SINGLELINE or DT_CENTER or DT_VCENTER
+
+        invoke EndPaint, h_window, addr st_ps
+
+    .elseif eax == WM_CREATE
+        invoke CreateWindowEx, NULL, offset str_button, offset str_button_text, WS_CHILD or WS_VISIBLE, 10, 10, 65, 22, h_window, 1, h_instance, NULL
+
+    .elseif eax == WM_CLOSE
+        invoke DestroyWindow, h_main_window
+        invoke PostQuitMessage, NULL
+    
+    .else
+        invoke DefWindowProc, h_window, u_msg, w_param, l_param
+        ret
+    .endif
+
+    xor eax, eax
+    ret
 
 _proc_main_window ENDP
 
@@ -59,7 +78,7 @@ _main_window PROC
     mov st_window_class.lpszClassName, offset str_class_name
     invoke RegisterClassEx, addr st_window_class
 
-    invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_class_name, offset str_main_caption, WS_OVERLAPPEDWINDOW, 100, 100, 600, 400, NULL, NULL, h_instance, NULL
+    invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_class_name, offset str_main_caption, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, h_instance, NULL
     mov h_main_window, eax
     invoke ShowWindow, h_main_window, SW_SHOWNORMAL
     invoke UpdateWindow, h_main_window
