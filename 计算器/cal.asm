@@ -15,6 +15,9 @@ includelib	kernel32.lib
 
 h_instance dword ?
 h_main_window dword ?
+h_edit_express dword ?
+h_edit_ans dword ?
+
 
 str_text_temp byte '1+2+23*5', 0
 str_text_temp_ans byte '123132313', 0
@@ -127,16 +130,15 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, w_param, l_param
         350, 58, 98, h_window, 21, h_instance, NULL
 
         invoke CreateWindowEx, NULL ,offset str_edit, offset str_text_temp, WS_CHILD or WS_VISIBLE, 10, 20, 200, 50, h_window, 22, h_instance, NULL
+        mov h_edit_express, eax
 
         invoke CreateWindowEx, NULL ,offset str_edit, offset str_text_temp_ans, WS_CHILD or WS_VISIBLE, 10, 120, 200, 50, h_window, 23, h_instance, NULL
+        mov h_edit_ans, eax
 
 
-    
     .elseif eax == WM_CLOSE
         invoke DestroyWindow, h_main_window
         invoke PostQuitMessage, NULL
-    
-    .elseif eax
     
     .else
         invoke DefWindowProc, h_window, u_msg, w_param, l_param
