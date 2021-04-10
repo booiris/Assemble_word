@@ -15,7 +15,8 @@ h_instance dword ?
 h_main_window dword ?
 h_window_edit1 dword ?
 h_window_edit2 dword ?
-h_old_window_edit dword ?
+h_old_window_edit1 dword ?
+h_old_window_edit2 dword ?
 h_file dword ?
 str_file_name byte MAX_PATH dup(?)
 str_buffer1 byte 10005 dup(?)
@@ -24,11 +25,14 @@ st_cf CHARFORMAT2 {}
 h_forward_edit dword ?
  
 wrong_line dword 50000 dup (?)
+wrong_line_cnt dword ?
+
 
 .data
 
 .const
 str_class_name byte 'compare_window', 0
+str_status_class_name byte 'msctls_statusbar32', 0
 str_caption_main byte '文件比较', 0
 str_caption_edit byte '比较完成', 0
 str_same byte '文本相同', 0
@@ -36,13 +40,18 @@ str_edit_dll byte 'RichEd20.dll', 0
 str_edit_class_name byte 'RichEdit20A', 0
 str_filter byte 'Text Files(*.txt)',0,'*.txt',0
 		byte	'All Files(*.*)',0,'*.*',0,0
-
+str_font	db	'宋体',0
 str_default_ext byte 'txt', 0
 str_err_openfile byte '无法打开文件!', 0
 str_load_file1 byte '打开文件1', 0
 str_load_file2 byte '打开文件2', 0
-szButton	db	'button',0
-szButtonText	db	'开始比较',0
+szButton	byte	'button',0
+szButtonText	byte	'开始比较',0
+dwStatusWidth	dword	100,200,350,500,-1
+str_chars_format	byte	'总长度:%d',0
+str_sumline_format	byte	'总行数:%d',0
+str_line_format	byte	'行:%d',0
+str_col_format	byte	'列:%d',0
 
 .code
 
@@ -97,10 +106,12 @@ _load_file ENDP
 
 _text_compare PROC uses esi edi
     LOCAL line1_cnt:dword, char1_pos:dword, line2_cnt:dword, char2_pos:dword, flag:dword
-    LOCAL temp_cf:CHARFORMAT2,all_flag:dword
+    LOCAL temp_cf:CHARFORMAT2,all_flag:dword,father:dword
 
     mov all_flag, 1
     mov st_cf.dwMask, CFM_BACKCOLOR
+    mov wrong_line_cnt, 0
+    mov father, 0
 
     invoke SendMessage, h_window_edit1, EM_GETLINECOUNT, 0, 0
     mov line1_cnt,eax
@@ -146,9 +157,13 @@ _text_compare PROC uses esi edi
             mov flag, 0
         .endif
 
+        mov esi, offset wrong_line
         .if flag == 0
             mov all_flag, 0
-
+            inc wrong_line_cnt
+            mov eax, father
+            mov [esi+4*eax], ebx
+            mov father, ebx
             mov st_cf.crBackColor, 0000FF00h
             invoke SendMessage, h_window_edit1, EM_SETCHARFORMAT, SCF_SELECTION,addr st_cf
 
@@ -176,39 +191,29 @@ _text_compare PROC uses esi edi
     ret
 _text_compare ENDP
 
-; _proc_edit_menu PROC uses ebx edi esi h_window,u_msg,wParam,lParam
-;     LOCAL @st_pos:POINT
-;     mov eax, u_msg
-;     .if eax == WM_RBUTTONDOWN
-;         invoke GetCursorPos,addr @st_pos
-;         invoke TrackPopupMenu,hSubMenu,TPM_LEFTALIGN or TPM_LEFTBUTTON,@st_pos.x,@st_pos.y,NULL,hWinMain,NULL
-;     .endif
-;     invoke CallWindowProc,h_old_window_edit,h_window,u_msg,wParam,lParam
-;     ret
-; _proc_edit ENDP
-
 _init PROC
 
     mov st_cf.cbSize, sizeof st_cf
     mov st_cf.yHeight, 13 * 20
     mov st_cf.dwMask, CFM_FACE or CFM_SIZE or CFM_BOLD or CFM_COLOR
+    invoke	lstrcpy,addr st_cf.szFaceName,addr str_font
 
     invoke	CreateWindowEx,NULL,\
 				offset szButton,offset szButtonText,\
 				WS_CHILD or WS_VISIBLE,\
-				450,610,200,50,\
+				450,605,200,30,\
 				h_main_window,5,h_instance,NULL
 
     invoke	CreateWindowEx,NULL,\
 				offset szButton,offset str_load_file1,\
 				WS_CHILD or WS_VISIBLE,\
-				120,610,200,50,\
+				120,605,200,30,\
 				h_main_window,3,h_instance,NULL
 
     invoke	CreateWindowEx,NULL,\
 				offset szButton,offset str_load_file2,\
 				WS_CHILD or WS_VISIBLE,\
-				750,610,200,50,\
+				750,605,200,30,\
 				h_main_window,4,h_instance,NULL
 
     invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_VSCROLL or WS_HSCROLL or ES_MULTILINE or ES_NOHIDESEL, 0, 0, 545, 600, h_main_window, 0, h_instance, NULL
@@ -217,12 +222,19 @@ _init PROC
     invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_VSCROLL or WS_HSCROLL or ES_MULTILINE or ES_NOHIDESEL, 545, 0, 545, 600, h_main_window, 1, h_instance, NULL
     mov h_window_edit2, eax
 
-    ; invoke SetWindowLong, h_window_edit1, GWL_WNDPROC, addr _proc_edit
-    ; mov h_old_window_edit, eax
+    ; invoke SetWindowLong, h_window_edit1, GWL_WNDPROC, addr _proc_edit1
+    ; mov h_old_window_edit1, eax
+
+    ; invoke SetWindowLong, h_window_edit2, GWL_WNDPROC, addr _proc_edit2
+    ; mov h_old_window_edit2, eax
+
 
     invoke SendMessage, h_window_edit1, EM_SETCHARFORMAT, 0 ,addr st_cf
+    invoke SendMessage, h_window_edit1, EM_SETLANGOPTIONS, 0, 0
 
     invoke SendMessage, h_window_edit2, EM_SETCHARFORMAT, 0 ,addr st_cf
+    invoke SendMessage, h_window_edit2, EM_SETLANGOPTIONS, 0, 0
+
 
     ret
 _init ENDP
@@ -246,6 +258,7 @@ _proc_main_window PROC uses ebx edi esi h_window,u_msg,wParam,lParam
         mov eax, wParam
         mov ecx, wParam
         shl eax, 16
+        
         .if ax == BN_CLICKED
             .if cx == 5
                 call _text_compare
