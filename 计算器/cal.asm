@@ -19,7 +19,6 @@ h_express dword ?
 h_ans dword ?
 
 
-str_text_temp byte '1+2+233333333333333333333333333333*5', 0
 str_text_temp_ans byte '123132313', 0
 
 .data?
@@ -32,6 +31,7 @@ str_ans byte 100000 dup (?)
 
 .const
 
+str_operation byte '1234567890+-*/.%^!()', 0
 str_edit_dll byte 'RichEd20.dll', 0
 str_edit_class_name byte 'RichEdit20A', 0
 str_edit_class byte 'edit', 0
@@ -52,16 +52,18 @@ str_button_text_num_7 byte '7', 0
 str_button_text_num_8 byte '8', 0
 str_button_text_num_9 byte '9', 0
 str_button_text_point byte '.', 0
-str_button_text_sin byte 'sin', 0
-str_button_text_cos byte 'cos', 0
-str_button_text_tan byte 'tan', 0
-str_button_text_arctan byte 'atan', 0
+str_button_text_sin byte 'sin(', 0
+str_button_text_cos byte 'cos(', 0
+str_button_text_tan byte 'tan(', 0
+str_button_text_arctan byte 'arctan(', 0
 str_button_text_pi byte 'PI', 0
+str_button_text_log byte 'log2(', 0
+str_button_text_exp byte 'x^y', 0
+str_button_text_fact byte 'x!', 0
 str_button_text_l byte '(', 0
 str_button_text_r byte ')', 0
 str_class_name byte 'main_window_class', 0
 str_main_caption byte '¼ÆËãÆ÷', 0
-str_text byte 'a12312214', 0
 
 .code
 
@@ -88,6 +90,8 @@ _input PROC uses esi edi
     mov byte ptr [edi], 0
 
     invoke SetWindowText, h_express, offset str_express
+
+    invoke SendMessage, h_express, EM_SETSEL, -1, -1
 
     ret
 _input ENDP
@@ -122,13 +126,13 @@ _init PROC
 
     invoke CreateWindowEx, NULL, offset str_button , offset str_button_text_div ,WS_CHILD or WS_VISIBLE, 250, 350, 58, 98, h_main_window, 14, h_instance, NULL
 
-    invoke CreateWindowEx, NULL, offset str_button , offset str_button_text_pi ,WS_CHILD or WS_VISIBLE, 10, 400, 58, 48, h_main_window, 15, h_instance, NULL
+    invoke CreateWindowEx, NULL, offset str_button , offset str_button_text_pi ,WS_CHILD or WS_VISIBLE, 10, 400, 58, 48, h_main_window, 21, h_instance, NULL
 
     invoke CreateWindowEx, NULL, offset str_button , offset str_button_text_point, WS_CHILD or WS_VISIBLE, 130,
-    400, 58, 48, h_main_window, 16, h_instance, NULL
+    400, 58, 48, h_main_window, 15, h_instance, NULL
 
     invoke CreateWindowEx, NULL, offset str_button , offset str_button_text_mod, WS_CHILD or WS_VISIBLE, 430,
-    250, 58, 198, h_main_window, 17, h_instance, NULL
+    250, 58, 198, h_main_window, 16, h_instance, NULL
 
     invoke CreateWindowEx, NULL, offset str_button , offset str_button_text_sin, WS_CHILD or WS_VISIBLE, 310,
     250, 58, 98, h_main_window, 22, h_instance, NULL
@@ -142,7 +146,7 @@ _init PROC
     invoke CreateWindowEx, NULL, offset str_button , offset str_button_text_arctan, WS_CHILD or WS_VISIBLE, 370,
     350, 58, 98, h_main_window, 25, h_instance, NULL
 
-    invoke CreateWindowEx, NULL ,offset str_edit_class_name, offset str_text_temp, WS_CHILD or WS_VISIBLE or WS_BORDER or WS_HSCROLL, 10, 20, 200, 50, h_main_window, 40, h_instance, NULL
+    invoke CreateWindowEx, NULL ,offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_BORDER or WS_HSCROLL or ES_NOHIDESEL, 10, 20, 200, 50, h_main_window, 40, h_instance, NULL
     mov h_express, eax
     invoke SendMessage, h_express, EM_SETREADONLY, 1, 0
 
@@ -153,31 +157,39 @@ _init PROC
     ret
 _init ENDP
 
-_check_btn PROC uses esi
+_check_btn PROC uses esi edi
     mov esi, offset str_input
-    .if cx >= 1 && cx <= 19
+    .if cx >= 1 && cx <= 20
         mov input_len, 1
-        mov byte ptr [esi], '1'
+        mov edi, offset str_operation
+        xor eax, eax
+        mov ax, cx
+        mov al, [edi+eax-1]
+        mov [esi], al
+        call _input
+    .elseif cx == 21
+        mov input_len, 2
+        invoke lstrcpy, esi, offset str_button_text_pi
         call _input
     .elseif cx == 22
-        mov input_len, 3
+        mov input_len, 4
         invoke lstrcpy, esi, offset str_button_text_sin
         call _input
     .elseif cx == 23
-        mov input_len, 3
+        mov input_len, 4
         invoke lstrcpy, esi, offset str_button_text_cos
         call _input
     .elseif cx  == 24
-        mov input_len, 3
+        mov input_len, 4
         invoke lstrcpy, esi, offset str_button_text_tan
         call _input
     .elseif cx == 25
-        mov input_len, 6
+        mov input_len, 7
         invoke lstrcpy, esi, offset str_button_text_arctan
         call _input
     .elseif cx == 26
-        mov input_len, 3
-        invoke lstrcpy, esi, offset str_button_text_sin
+        mov input_len, 4
+        invoke lstrcpy, esi, offset str_button_text_log
         call _input
     .elseif cx == 27
 
