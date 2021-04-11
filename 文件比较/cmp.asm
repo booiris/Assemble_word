@@ -193,11 +193,6 @@ _text_compare ENDP
 
 _init PROC
 
-    mov st_cf.cbSize, sizeof st_cf
-    mov st_cf.yHeight, 13 * 20
-    mov st_cf.dwMask, CFM_FACE or CFM_SIZE or CFM_BOLD or CFM_COLOR
-    invoke	lstrcpy,addr st_cf.szFaceName,addr str_font
-
     invoke	CreateWindowEx,NULL,\
 				offset szButton,offset szButtonText,\
 				WS_CHILD or WS_VISIBLE,\
@@ -216,10 +211,10 @@ _init PROC
 				750,605,200,30,\
 				h_main_window,4,h_instance,NULL
 
-    invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_VSCROLL or WS_HSCROLL or ES_MULTILINE or ES_NOHIDESEL, 0, 0, 545, 600, h_main_window, 0, h_instance, NULL
+    invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_VSCROLL or WS_HSCROLL or ES_MULTILINE, 0, 0, 545, 600, h_main_window, 0, h_instance, NULL
     mov h_window_edit1, eax
 
-    invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_VSCROLL or WS_HSCROLL or ES_MULTILINE or ES_NOHIDESEL, 545, 0, 545, 600, h_main_window, 1, h_instance, NULL
+    invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_VSCROLL or WS_HSCROLL or ES_MULTILINE, 545, 0, 545, 600, h_main_window, 1, h_instance, NULL
     mov h_window_edit2, eax
 
     ; invoke SetWindowLong, h_window_edit1, GWL_WNDPROC, addr _proc_edit1
@@ -289,6 +284,11 @@ _main_window PROC
     LOCAL st_window_class:WNDCLASSEX
     LOCAL st_msg:MSG
     LOCAL h_edit:dword
+
+    mov st_cf.cbSize, sizeof st_cf
+    mov st_cf.yHeight, 13 * 20
+    mov st_cf.dwMask, CFM_FACE or CFM_SIZE or CFM_BOLD or CFM_COLOR
+    invoke	lstrcpy,addr st_cf.szFaceName,addr str_font
 
     invoke LoadLibrary, offset str_edit_dll
     mov h_edit, eax
