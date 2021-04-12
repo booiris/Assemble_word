@@ -13,16 +13,12 @@ includelib	kernel32.lib
 
 .data
 
+.data?
+
 h_instance dword ?
 h_main_window dword ?
 h_express dword ?
 h_ans dword ?
-
-
-str_text_temp_ans byte '123132313', 0
-
-.data?
- 
 str_express byte 20000 dup (?)
 id_express dword 10000 dup (?)
 express_len dword ?
@@ -68,13 +64,11 @@ str_font	db	'宋体',0
 
 .code
 
+
 _cal PROC
         ; TODO 计算主要函数
     ret
 _cal ENDP
-
-
-
 
 
 _input PROC uses esi edi, p_input
@@ -169,7 +163,7 @@ _init PROC
     mov h_express, eax
     invoke SendMessage, h_express, EM_SETREADONLY, 1, 0
 
-    invoke CreateWindowEx, NULL ,offset str_edit_class_name, offset str_text_temp_ans, WS_CHILD or WS_VISIBLE or WS_BORDER or ES_NOHIDESEL, 10, 100, 480, 40, h_main_window, 41, h_instance, NULL
+    invoke CreateWindowEx, NULL ,offset str_edit_class_name, offset str_ans, WS_CHILD or WS_VISIBLE or WS_BORDER or ES_NOHIDESEL, 10, 100, 480, 40, h_main_window, 41, h_instance, NULL
     mov h_ans, eax
     invoke SendMessage, h_ans, EM_SETREADONLY, 1, 0
 
