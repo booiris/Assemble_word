@@ -296,9 +296,6 @@ _main_window PROC
     mov h_instance, eax
 
     invoke RtlZeroMemory, addr st_window_class, sizeof st_window_class
-    ; invoke LoadIcon, h_instance, ICO_MAIN
-    ; mov st_window_class.hIcon, eax
-    ; mov	st_window_class.hIconSm,eax
     invoke	LoadCursor,0,IDC_ARROW
     mov	st_window_class.hCursor,eax
     push h_instance
@@ -329,5 +326,5 @@ _main_window ENDP
 start:
     call _main_window
     invoke ExitProcess, NULL
-
+    ret
 end start
