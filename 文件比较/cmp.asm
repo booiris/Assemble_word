@@ -106,7 +106,7 @@ _load_file ENDP
 
 _text_compare PROC uses esi edi
     LOCAL line1_cnt:dword, char1_pos:dword, line2_cnt:dword, char2_pos:dword, flag:dword
-    LOCAL temp_cf:CHARFORMAT2,all_flag:dword,father:dword
+    LOCAL all_flag:dword,father:dword
 
     mov all_flag, 1
     mov st_cf.dwMask, CFM_BACKCOLOR
