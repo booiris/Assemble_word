@@ -29,7 +29,9 @@ str_express byte 20000 dup (?)
 id_express dword 10000 dup (?)
 express_len dword ?
 id_len dword ?
-str_ans byte 100 dup (?)
+str_ans_int byte 10 dup (?)
+str_ans_float byte 5 dup (?)
+str_ans byte 15 dup (?)
 map dword 35 dup (?)
 
 str_input_num byte 50 dup(?)
@@ -39,10 +41,12 @@ sta_op dword 10000 dup (?)
 sta_num dword 10000 dup (?)
 temp_out real8 ?
 now_state dword ?
+error dword ?
 
 .const
 
 key dword 0,0,0,0,0,0,0,0,0,0,0,2,2,3,3,0,3,0,0,1,1,0,1,1,1,1,1,0
+pow_num dword 1000.0
 
 str_edit_dll byte 'RichEd20.dll', 0
 str_edit_class_name byte 'RichEdit20A', 0
@@ -78,7 +82,7 @@ str_class_name byte 'main_window_class', 0
 str_main_caption byte '¼ÆËãÆ÷', 0
 str_font	db	'ËÎÌå',0
 
-str_out_ans byte '%f', 0
+str_out_ans byte '%d', 0
 str_in_float byte '%lf', 0
 str_out_int byte '%d', 0
 str_pop_error byte 'pop error',0ah, 0
@@ -116,7 +120,7 @@ _pop PROC uses esi, p_stack
     mov esi, p_stack
     mov eax, [esi]
     .if eax == 0
-        invoke printf, offset str_pop_error
+        mov error, 1
         jmp done
     .endif
     dec eax
@@ -194,7 +198,7 @@ _cal_op PROC
             fprem
         .endif
     .else
-        invoke printf, offset str_op_error
+        mov error, 1
     .endif
     fstp n1
     invoke _push,offset sta_num, n1
@@ -205,7 +209,6 @@ _cal PROC
     LOCAL index:dword, temp:dword, now_pr:dword, now_w:dword
     finit
 
-    inc id_len
     mov esi, offset id_express
     mov ecx, id_len
     mov dword ptr [esi+4*ecx], 20
@@ -215,6 +218,7 @@ _cal PROC
     mov sta_num, 0
     mov now_state, 1
     mov eax, id_len
+    inc eax
     mov index, eax
     mov float_flag, 0
     mov input_num_len, 0
@@ -236,7 +240,7 @@ _cal PROC
                 mov byte ptr [edi+ecx], '.'
                 inc input_num_len
             .else
-                invoke printf, offset str_point_error
+                mov error, 1
             .endif
         .elseif eax >= 1 && eax <= 10
             mov edi, offset str_input_num
@@ -262,10 +266,8 @@ _cal PROC
                 fldpi 
                 fstp temp
                 invoke _push,offset sta_num, temp
-                mov now_state, 2
             .elseif eax == 20
-                mov now_state, 2
-                mov now_pr, 4
+                mov now_pr, 1
                 .while 1
                     invoke _top,offset sta_op
                     invoke _getpr, eax
@@ -275,12 +277,11 @@ _cal PROC
                 invoke _top,offset sta_op
                 invoke _getpr, eax
                 .if eax == 0
-                    invoke printf, offset str_r_error
+                    mov error, 1
                 .else
                     call _cal_op
                 .endif
             .else
-                mov now_state, 0
                 invoke _getpr, eax
                 mov now_pr, eax
                 .while 1
@@ -304,11 +305,26 @@ _cal PROC
     invoke _top,offset sta_num
     mov temp, eax
     fld temp
-    fstp temp_out
-    invoke wsprintf,offset str_ans,offset str_out_ans,offset temp_out
-    invoke SetWindowText, h_ans, offset str_ans
+    fmul pow_num
+    fistp temp
+    mov eax, temp
+    mov ebx, 1000
+    xor edx, edx
+    div ebx
+    push edx
+    invoke wsprintf,offset str_ans_int,offset str_out_ans,eax
+    pop edx
+    invoke wsprintf,offset str_ans_float,offset str_out_ans,edx
+
+    mov esi, offset str_ans 
+    invoke	lstrcpy, esi, offset str_ans_int
+    invoke lstrlen, offset str_ans_int
+    add esi, eax
+    mov byte ptr [esi], '.'
+    inc esi
+    invoke	lstrcpy, esi, offset str_ans_float
     
-    dec id_len
+    invoke SetWindowText, h_ans, offset str_ans
 
     ret
 
