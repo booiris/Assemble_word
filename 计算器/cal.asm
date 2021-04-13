@@ -90,6 +90,7 @@ str_r_error byte ') error',0ah, 0
 str_pre_error byte '+- error',0ah, 0
 str_op_error byte 'operation error',0ah, 0
 str_point_error byte 'point error',0ah, 0
+str_error byte 'error', 0ah, 0
 
 .code
 
@@ -206,13 +207,14 @@ _cal_op PROC
 _cal_op ENDP
 
 _cal PROC 
-    LOCAL index:dword, temp:dword, now_pr:dword, now_w:dword
+    LOCAL index:dword, temp:dword, now_pr:dword, now_w:dword, father:dword
     finit
 
     mov esi, offset id_express
     mov ecx, id_len
     mov dword ptr [esi+4*ecx], 20
 
+    mov error, 0
     mov sta_op, 0
     invoke _push, offset sta_op, 19
     mov sta_num, 0
@@ -223,12 +225,13 @@ _cal PROC
     mov float_flag, 0
     mov input_num_len, 0
     mov esi, offset id_express
+    mov father, 0
 
     .while index != 0
         mov eax, [esi]
         mov now_w, eax
         add esi, 4
-        .if input_num_len == 0 && (eax == 11 || eax == 12)
+        .if input_num_len == 0 && father != 20 && (eax == 11 || eax == 12)
             .if eax == 12
                 neg now_state
             .endif
@@ -299,6 +302,8 @@ _cal PROC
             .endif
         .endif
 
+        mov eax, now_w
+        mov father, eax
         dec index
     .endw
 
@@ -306,6 +311,13 @@ _cal PROC
     mov temp, eax
     fld temp
     fmul pow_num
+    ftst
+    FSTSW ax
+    and ax, 0100h
+    .if ax != 0
+        mov index, -1
+        fchs
+    .endif
     fistp temp
     mov eax, temp
     mov ebx, 1000
@@ -317,6 +329,10 @@ _cal PROC
     invoke wsprintf,offset str_ans_float,offset str_out_ans,edx
 
     mov esi, offset str_ans 
+    .if index == -1
+        mov byte ptr [esi], '-'
+        inc esi
+    .endif
     invoke	lstrcpy, esi, offset str_ans_int
     invoke lstrlen, offset str_ans_int
     add esi, eax
@@ -324,7 +340,13 @@ _cal PROC
     inc esi
     invoke	lstrcpy, esi, offset str_ans_float
     
-    invoke SetWindowText, h_ans, offset str_ans
+    FSTSW ax
+    and ax, 004dh
+    .if error == 1 || ax != 0
+        invoke SetWindowText, h_ans, offset str_error
+    .else
+        invoke SetWindowText, h_ans, offset str_ans
+    .endif
 
     ret
 
@@ -422,7 +444,7 @@ _init PROC
     mov h_express, eax
     invoke SendMessage, h_express, EM_SETREADONLY, 1, 0
 
-    invoke CreateWindowEx, NULL ,offset str_edit_class_name, offset str_ans, WS_CHILD or WS_VISIBLE or WS_BORDER or ES_NOHIDESEL, 10, 100, 480, 40, h_main_window, 41, h_instance, NULL
+    invoke CreateWindowEx, NULL ,offset str_edit_class_name, offset str_ans, WS_CHILD or WS_VISIBLE or WS_BORDER or ES_NOHIDESEL or ES_RIGHT, 10, 100, 480, 40, h_main_window, 41, h_instance, NULL
     mov h_ans, eax
     invoke SendMessage, h_ans, EM_SETREADONLY, 1, 0
 
@@ -447,6 +469,7 @@ _init PROC
 
     invoke SendMessage, h_ans, EM_GETRECT, 0 ,addr st_rc
     add st_rc.top, 8
+    sub st_rc.right, 30
     invoke SendMessage, h_ans, EM_SETRECT, 0, addr st_rc
 
 
@@ -472,6 +495,7 @@ _back PROC uses esi
         mov byte ptr [esi+eax],0
         loop main_loop
     invoke SetWindowText, h_express, offset str_express
+    invoke SetWindowText, h_ans, NULL
 
     invoke SendMessage, h_express, EM_SETSEL, -1, -1
     done:
@@ -498,6 +522,7 @@ _check_btn PROC uses esi edi
         mov express_len, 0
         mov id_len, 0
         invoke SetWindowText, h_express, esi
+        invoke SetWindowText, h_ans, NULL
     .elseif cx == 29
         call _cal
     .endif
