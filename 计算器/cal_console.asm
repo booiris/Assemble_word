@@ -7,17 +7,21 @@ includelib msvcrt.lib
 
 printf PROTO C :dword, :vararg
 scanf PROTO C :dword, :vararg
+sscanf PROTO C :dword, :dword, :vararg
 
 .data
 
-id_input dword 22,21,20
-id_len dword 3
+id_express dword 12,1,1,15,1,11,26,4,20,20
+id_len dword 10
 key dword 0,0,0,0,0,0,0,0,0,0,0,2,2,3,3,0,3,0,0,1,1,0,1,1,1,1,1,0
 
 
 .data?
 
 str_input byte 1000 dup (?) 
+str_input_num byte 50 dup(?)
+input_num_len dword ?
+float_flag dword ?
 sta_op dword 10000 dup (?)
 sta_num dword 10000 dup (?)
 temp_out real8 ?
@@ -25,11 +29,13 @@ now_state dword ?
 
 .const 
 str_out_ans byte '%f', 0
+str_in_float byte '%lf', 0
 str_out_int byte '%d', 0
 str_pop_error byte 'pop error',0ah, 0
 str_r_error byte ') error',0ah, 0
 str_pre_error byte '+- error',0ah, 0
 str_op_error byte 'operation error',0ah, 0
+str_point_error byte 'point error',0ah, 0
 
 .code
 
@@ -68,12 +74,11 @@ _pop PROC uses esi, p_stack
         ret
 _pop ENDP
 
-_getnum PROC uses esi, now_index
+_getnum PROC uses esi
     LOCAL temp:dword
-    mov esi, now_index
-    mov eax, [esi-4]
-    mov temp, eax
-    fild temp
+    mov esi, offset str_input_num
+    invoke sscanf, esi, offset str_in_float, offset temp_out
+    fld temp_out
     .if now_state == -1
         mov now_state, 0
         fchs
@@ -151,65 +156,89 @@ _cal PROC
     mov sta_op, 0
     invoke _push, offset sta_op, 19
     mov sta_num, 0
-    mov now_state, 0
+    mov now_state, 1
     mov eax, id_len
     mov index, eax
-    mov esi, offset id_input
+    mov float_flag, 0
+    mov input_num_len, 0
+    mov esi, offset id_express
 
     .while index != 0
         mov eax, [esi]
         mov now_w, eax
         add esi, 4
-        .if now_state == 0 && (eax == 11 || eax == 12)
-            mov ecx, [esi]
-            .if ecx < 1 || ecx > 10
-                invoke printf, offset str_pre_error
+        .if input_num_len == 0 && (eax == 11 || eax == 12)
+            .if eax == 12
+                neg now_state
             .endif
-            .if eax == 11
-                mov now_state, -1
-            .else 
-                mov now_state, 1
+        .elseif eax == 15
+            .if float_flag == 0
+                mov float_flag, 1
+                mov edi, offset str_input_num
+                mov ecx, input_num_len
+                mov byte ptr [edi+ecx], '.'
+                inc input_num_len
+            .else
+                invoke printf, offset str_point_error
             .endif
         .elseif eax >= 1 && eax <= 10
-            invoke _getnum, esi
-            mov now_state, 2
-        .elseif eax == 21
-            fldpi 
-            fstp temp
-            invoke _push,offset sta_num, temp
-            mov now_state, 2
-        .elseif eax == 20
-            mov now_state, 2
-            mov now_pr, 1
-            .while 1
-                invoke _top,offset sta_op
-                invoke _getpr, eax
-                .break .if now_pr >= eax
-                call _cal_op
-            .endw
-            invoke _top,offset sta_op
-            invoke _getpr, eax
-            .if eax == 0
-                invoke printf, offset str_r_error
-            .else
-                call _cal_op
+            mov edi, offset str_input_num
+            mov ecx, input_num_len
+            .if eax == 10
+                xor eax, eax
             .endif
+            add eax, '0'
+            mov [edi+ecx], al
+            inc input_num_len
         .else
-            mov now_state, 0
-            invoke _getpr, eax
-            mov now_pr, eax
-            .while 1
+            .if input_num_len != 0
+                mov edi, offset str_input_num
+                mov ecx, input_num_len
+                mov byte ptr [edi+ecx], 0
+                call _getnum
+                mov input_num_len, 0
+                mov float_flag, 0
+                mov now_state, 1
+                mov eax, now_w
+            .endif
+            .if eax == 21
+                fldpi 
+                fstp temp
+                invoke _push,offset sta_num, temp
+                mov now_state, 2
+            .elseif eax == 20
+                mov now_state, 2
+                mov now_pr, 4
+                .while 1
+                    invoke _top,offset sta_op
+                    invoke _getpr, eax
+                    .break .if now_pr >= eax
+                    call _cal_op
+                .endw
                 invoke _top,offset sta_op
                 invoke _getpr, eax
-                .break .if now_pr >= eax
-                call _cal_op
-            .endw
-            invoke _top,offset sta_op
-            invoke _getpr, eax
-            .if now_pr == eax
-                call _cal_op
+                .if eax == 0
+                    invoke printf, offset str_r_error
+                .else
+                    call _cal_op
+                .endif
+            .else
+                mov now_state, 0
+                invoke _getpr, eax
+                mov now_pr, eax
+                .while 1
+                    invoke _top,offset sta_op
+                    invoke _getpr, eax
+                    .break .if now_pr >= eax || now_pr == 1
+                    call _cal_op
+                .endw
+                invoke _top,offset sta_op
+                invoke _getpr, eax
+                .if now_pr == eax && eax != 1
+                    call _cal_op
+                .endif
+                invoke _push,offset sta_op, now_w
             .endif
-            invoke _push,offset sta_op, now_w
         .endif
 
         dec index
