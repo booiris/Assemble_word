@@ -309,6 +309,7 @@ _cal PROC
 
     invoke _top,offset sta_num
     mov temp, eax
+    invoke _pop,offset sta_num
     fld temp
     fmul pow_num
     ftst
@@ -342,7 +343,12 @@ _cal PROC
     
     FSTSW ax
     and ax, 004dh
-    .if error == 1 || ax != 0
+    mov esi, offset sta_op
+    mov ecx, [esi]
+    mov esi, offset sta_num
+    mov edx, [esi]
+
+    .if error == 1 || ax != 0 || ecx != 0 || edx != 0
         invoke SetWindowText, h_ans, offset str_error
     .else
         invoke SetWindowText, h_ans, offset str_ans
