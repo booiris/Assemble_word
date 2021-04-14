@@ -40,12 +40,11 @@ float_flag dword ?
 sta_op dword 10000 dup (?)
 sta_num dword 10000 dup (?)
 temp_out real8 ?
-now_state dword ?
 error dword ?
 
 .const
 
-key dword 0,0,0,0,0,0,0,0,0,0,0,2,2,3,3,0,3,0,0,1,1,0,1,1,1,1,1,0
+key dword 0,0,0,0,0,0,0,0,0,0,0,2,2,3,3,0,3,0,0,1,1,0,1,1,1,1,1,5
 pow_num dword 1000.0
 
 str_edit_dll byte 'RichEd20.dll', 0
@@ -135,10 +134,6 @@ _getnum PROC uses esi
     mov esi, offset str_input_num
     invoke sscanf, esi, offset str_in_float, offset temp_out
     fld temp_out
-    .if now_state == -1
-        mov now_state, 0
-        fchs
-    .endif
     fstp temp 
     invoke _push, offset sta_num, temp
     ret
@@ -176,6 +171,8 @@ _cal_op PROC
             fld1 
             fld n1
             fyl2x
+        .elseif edx == 27
+            fchs
         .endif
     .elseif edx >= 11 && edx < 19
         invoke _top,offset sta_num
@@ -218,7 +215,6 @@ _cal PROC
     mov sta_op, 0
     invoke _push, offset sta_op, 19
     mov sta_num, 0
-    mov now_state, 1
     mov eax, id_len
     inc eax
     mov index, eax
@@ -232,9 +228,7 @@ _cal PROC
         mov now_w, eax
         add esi, 4
         .if input_num_len == 0 && father != 20 && (eax == 11 || eax == 12)
-            .if eax == 12
-                neg now_state
-            .endif
+            invoke _push, offset sta_op, 27
         .elseif eax == 15
             .if float_flag == 0
                 mov float_flag, 1
@@ -262,7 +256,6 @@ _cal PROC
                 call _getnum
                 mov input_num_len, 0
                 mov float_flag, 0
-                mov now_state, 1
                 mov eax, now_w
             .endif
             .if eax == 21
@@ -283,6 +276,11 @@ _cal PROC
                     mov error, 1
                 .else
                     call _cal_op
+                    .while 1
+                        invoke _top,offset sta_op
+                        .break .if eax != 27
+                        call _cal_op
+                    .endw
                 .endif
             .else
                 invoke _getpr, eax
