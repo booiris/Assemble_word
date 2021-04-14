@@ -144,25 +144,6 @@ get_maxn PROC C nn1:dword,nn2:dword
         ret
 get_maxn ENDP
 
-outputnum PROC C num_len:dword,num_p:dword
-    LOCAL t4:real4,t8:real8
-    finit
-    mov edi, num_p
-    mov ecx, num_len
-    arr_loop:
-        push ecx
-        mov eax, [edi]
-        mov t4, eax
-        fld t4
-        fstp t8
-        invoke printf, offset out_format_float, t8
-        add edi, 8
-        pop ecx
-        loop arr_loop
-    invoke printf, offset out_format_enter
-    ret
-outputnum ENDP
-
 cp_mul PROC C cp1:cp, cp2:cp
     LOCAL temp:cp
     fld cp1.x
@@ -236,13 +217,6 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
     invoke int_to_float, inv
     mov float_inv, eax
 
-    ; invoke printf, offset out_format_int, num_len
-    ; invoke printf, offset out_format_enter
-    ; invoke outputnum, n1, offset num1
-    ; mov esi, offset num1
-    ; add esi, 4
-    ; invoke outputnum, n1, esi
-
     mov edi, offset temp_num
     mov esi, num_p
     mov edx, 0
@@ -253,10 +227,6 @@ fft PROC C num_len:dword, num_p:dword, inv:dword
         fldpi
 
         fmul st(0),st(1)
-        ; push edx
-        ; fst aaaa
-        ; invoke printf, offset out_format_float, aaaa
-        ; pop edx
 
         fld two
 
@@ -352,7 +322,7 @@ output_ans PROC C
         ret
 output_ans ENDP
 
-key PROC C num_len:dword
+mat_mul PROC C num_len:dword
     LOCAL temp1:cp,temp2:cp
     mov esi, offset num1
     mov edi, offset num2
@@ -385,7 +355,7 @@ key PROC C num_len:dword
 
     ret
 
-key ENDP
+mat_mul ENDP
 
 
 get_ans PROC C num_len:dword
@@ -466,7 +436,7 @@ start:
     invoke fft, n1, offset num1, 1
     invoke fft, n1, offset num2, 1
         
-    invoke key, n1
+    invoke mat_mul, n1
 
     invoke fft, n1, offset num1, -1
 
