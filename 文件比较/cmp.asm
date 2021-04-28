@@ -247,8 +247,6 @@ _proc_main_window PROC uses ebx edi esi h_window,u_msg,wParam,lParam
         push h_window
         pop h_main_window
         call _init
-    .elseif eax == WM_SIZE
-        ; TODO 自适应大小
     .elseif eax == WM_COMMAND
         mov eax, wParam
         mov ecx, wParam

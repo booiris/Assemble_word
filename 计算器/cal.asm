@@ -164,7 +164,9 @@ _cal_op PROC
             fcos
         .elseif edx == 24
             fptan
+            fstp n1
         .elseif edx == 25
+            fld1
             fpatan
         .elseif edx == 26
             fstp n1
