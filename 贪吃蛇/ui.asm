@@ -13,11 +13,14 @@ includelib	kernel32.lib
 
 includelib msvcrt.lib
 
+ICO_MAIN equ 100
+IDC_MAIN equ 100
+
 .data
 
 .const
 
-str_main_caption byte 'º∆À„∆˜', 0
+str_main_caption byte 'Ã∞≥‘…ﬂ', 0
 str_class_name byte 'main_window_class', 0
 
 
@@ -25,6 +28,7 @@ str_class_name byte 'main_window_class', 0
 
 h_instance dword ?
 h_main_window dword ?
+h_main_cursor dword ?
 
 .code
 
@@ -33,6 +37,7 @@ _init PROC
 _init ENDP
 
 _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
+    local st_ps:PAINTSTRUCT
 
     mov eax, u_msg
 
@@ -40,6 +45,9 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         push h_window
         pop h_main_window
         call _init
+    .elseif eax == WM_PAINT
+        invoke BeginPaint, h_window, addr st_ps
+        invoke EndPaint, h_window, addr st_ps
     
     .elseif eax == WM_COMMAND
         mov eax, wParam
@@ -63,8 +71,14 @@ _proc_main_window ENDP
 _main_window PROC 
     LOCAL st_window_class:WNDCLASSEX
     LOCAL st_msg:MSG
-    LOCAL h_edit:dword
 
+    invoke	GetModuleHandle,NULL
+    mov	h_instance,eax
+
+    invoke	RtlZeroMemory,addr st_window_class,sizeof st_window_class
+    invoke	LoadIcon,h_instance,ICO_MAIN
+    mov	st_window_class.hIcon,eax
+    mov	st_window_class.hIconSm,eax
     invoke LoadCursor, 0, IDC_ARROW
     mov st_window_class.hCursor, eax
     push h_instance
