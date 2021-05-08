@@ -10,3 +10,6 @@ build/
 *.temp
 document/
 BmpClock/
+*.zip
+*.png
+*.db

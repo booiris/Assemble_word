@@ -2,5 +2,9 @@
 #include		<resource.h>
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 #define	ICO_MAIN		100
+#define back_ground     100
+#define snake_head      101
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
+back_ground BITMAP      "temp_ground.bmp"
+snake_head  BITMAP      "moose.bmp"
