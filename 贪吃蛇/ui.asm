@@ -19,6 +19,8 @@ snake_head equ 101
 
 .data
 
+now_x dword 10
+
 .const
 
 str_main_caption byte 'Ì°³ÔÉß', 0
@@ -36,11 +38,14 @@ h_window_player2 dword ?
 h_window_status dword ?
 h_dc_back dword ?
 h_bmp_back dword ? ;TODOÉ¾³ý¾ä±ú£¬ÊÍ·Å¶ÔÏó
+h_dc_copy dword ?
+h_dc_snake_head dword ?
 
 .code
 
 _create_background PROC
     local h_dc, h_back
+    local h_bmp_snake_head,h_bmp_head
     
     invoke GetDC, h_window_main
     mov h_dc, eax
@@ -48,33 +53,56 @@ _create_background PROC
 	mov	h_dc_back, eax
     invoke CreateCompatibleBitmap, h_dc, 1100, 650
     mov h_bmp_back, eax
+
+    invoke	CreateCompatibleDC, h_dc
+	mov	h_dc_snake_head, eax
+    invoke	CreateCompatibleDC, h_dc
+	mov	h_dc_copy, eax
+    invoke CreateCompatibleBitmap, h_dc, 1100, 650
+    mov h_bmp_snake_head, eax
+
     invoke ReleaseDC,h_window_main,h_dc 
 
     invoke	LoadBitmap,h_instance, back_ground
 	mov	h_back,eax
+    invoke	LoadBitmap,h_instance,snake_head
+    mov	h_bmp_head,eax
 
     invoke	SelectObject,h_dc_back,h_bmp_back 
+    invoke	SelectObject,h_dc_snake_head, h_bmp_snake_head
+    invoke  SelectObject, h_dc_copy, h_bmp_head
 
     invoke	CreatePatternBrush,h_back
     push	eax
     invoke	SelectObject,h_dc_back,eax
     invoke	PatBlt,h_dc_back,0,0,1100, 650,PATCOPY
     pop	eax
-    invoke	DeleteObject,eax
+    invoke	DeleteObject,eax    
 
-    invoke DeleteObject, h_back
+    invoke SetStretchBltMode,h_dc_snake_head,HALFTONE
+    invoke SetStretchBltMode,h_dc_copy,HALFTONE
+    invoke	BitBlt,h_dc_snake_head,0,0,1100,650,h_dc_back,0,0,SRCCOPY
+    ; invoke StretchBlt,h_dc_snake_head,now_x,100,62, 40,h_dc_copy,0,0,268,162,SRCCOPY
+
+    invoke	DeleteObject,h_bmp_snake_head
+    invoke	DeleteObject,h_bmp_head
+    invoke  DeleteObject, h_back
     
     ret 
 _create_background ENDP
 
+    
+_Drawsnake PROC 
+    invoke	BitBlt,h_dc_snake_head,0,0,1100,650,h_dc_back,0,0,SRCCOPY
+    add now_x, 5
+    invoke	StretchBlt,h_dc_snake_head,now_x,100,62, 40,h_dc_copy,0,0,268,162,SRCCOPY
 
-_create_snake PROC 
     ret
-_create_snake ENDP 
+_Drawsnake ENDP
 
 _init PROC
     call _create_background
-    call _create_snake
+    invoke	SetTimer,h_window_main,1,30,NULL
     ret
 _init ENDP
 
@@ -88,6 +116,10 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         push h_window
         pop h_window_main
         call _init
+    .elseif	eax ==	WM_TIMER
+        invoke	_Drawsnake
+        invoke	InvalidateRect,h_window,NULL,FALSE
+    
     .elseif	eax ==	WM_PAINT
         invoke	BeginPaint,h_window,addr st_ps
         mov	h_dc,eax
@@ -98,12 +130,13 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         sub	ecx,st_ps.rcPaint.top
 
         invoke	BitBlt,h_dc,st_ps.rcPaint.left,st_ps.rcPaint.top,eax,ecx,\
-            h_dc_back,st_ps.rcPaint.left,st_ps.rcPaint.top,SRCCOPY
+            h_dc_snake_head,st_ps.rcPaint.left,st_ps.rcPaint.top,SRCCOPY
         invoke	EndPaint,h_window,addr st_ps
 
     ; .elseif eax == WM_MOVING
 
     .elseif eax == WM_CLOSE
+        invoke	KillTimer,h_window_main,1
         invoke DestroyWindow, h_window
         invoke PostQuitMessage, NULL
     
@@ -116,43 +149,6 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
 
     ret
 _proc_main_window ENDP
-
-_proc_status_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
-    local st_ps:PAINTSTRUCT
-    local h_dc
-
-    mov eax, u_msg
-
-    .if eax == WM_CREATE
-        push h_window
-        pop h_window_main
-        call _init
-    .elseif	eax ==	WM_PAINT
-        invoke	BeginPaint,h_window,addr st_ps
-        mov	h_dc,eax
-
-        mov	eax,st_ps.rcPaint.right
-        sub	eax,st_ps.rcPaint.left
-        mov	ecx,st_ps.rcPaint.bottom
-        sub	ecx,st_ps.rcPaint.top
-
-        invoke	BitBlt,h_dc,st_ps.rcPaint.left,st_ps.rcPaint.top,eax,ecx,\
-            h_dc_back,st_ps.rcPaint.left,st_ps.rcPaint.top,SRCCOPY
-        invoke	EndPaint,h_window,addr st_ps
-
-    .elseif eax == WM_CLOSE
-        invoke DestroyWindow, h_window
-        invoke PostQuitMessage, NULL
-    
-    .else
-        invoke DefWindowProc, h_window, u_msg, wParam, lParam
-        ret
-    .endif
-
-    xor eax, eax
-
-    ret
-_proc_status_window ENDP
 
 _main_window PROC 
     LOCAL st_window_class:WNDCLASSEX
