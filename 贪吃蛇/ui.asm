@@ -16,10 +16,23 @@ includelib msvcrt.lib
 ICO_MAIN equ 100
 back_ground equ 100
 snake_head equ 101
+key_s equ 53h
+key_w equ 57h
+key_a equ 41h
+key_d equ 44h
+key_up equ 26h
+key_down equ 28h
+key_left equ 25h
+key_right equ 27h
+
 
 .data
 
-now_x dword 10
+player1_x dword 10
+player1_y dword 50
+speed dword 2
+player1_x_dir dword 1
+player1_y_dir dword 0
 
 .const
 
@@ -82,7 +95,6 @@ _create_background PROC
     invoke SetStretchBltMode,h_dc_snake_head,HALFTONE
     invoke SetStretchBltMode,h_dc_copy,HALFTONE
     invoke	BitBlt,h_dc_snake_head,0,0,1100,650,h_dc_back,0,0,SRCCOPY
-    ; invoke StretchBlt,h_dc_snake_head,now_x,100,62, 40,h_dc_copy,0,0,268,162,SRCCOPY
 
     invoke	DeleteObject,h_bmp_snake_head
     invoke	DeleteObject,h_bmp_head
@@ -94,17 +106,42 @@ _create_background ENDP
     
 _Drawsnake PROC 
     invoke	BitBlt,h_dc_snake_head,0,0,1100,650,h_dc_back,0,0,SRCCOPY
-    add now_x, 5
-    invoke	StretchBlt,h_dc_snake_head,now_x,100,62, 40,h_dc_copy,0,0,268,162,SRCCOPY
+    mov eax, speed
+    imul eax, player1_x_dir
+    add player1_x, eax
+
+    mov eax, speed
+    imul eax, player1_y_dir
+    add player1_y, eax
+    invoke	StretchBlt,h_dc_snake_head,player1_x,player1_y,62, 40,h_dc_copy,0,0,268,162,SRCCOPY
 
     ret
 _Drawsnake ENDP
 
 _init PROC
     call _create_background
-    invoke	SetTimer,h_window_main,1,30,NULL
+    invoke	SetTimer,h_window_main,1,1,NULL
     ret
 _init ENDP
+
+_check_operation PROC 
+    .if eax == key_w
+        ; invoke MessageBox, h_window_main, NULL, NULL, MB_OK
+        mov player1_x_dir, 0
+        mov player1_y_dir, -1
+    .elseif eax == key_s
+        mov player1_x_dir, 0
+        mov player1_y_dir, 1
+    .elseif eax == key_a
+        mov player1_x_dir, -1
+        mov player1_y_dir, 0
+    .elseif eax == key_d
+        mov player1_x_dir, 1
+        mov player1_y_dir, 0
+    
+    .endif
+    ret
+_check_operation ENDP
 
 _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
     local st_ps:PAINTSTRUCT
@@ -132,9 +169,10 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         invoke	BitBlt,h_dc,st_ps.rcPaint.left,st_ps.rcPaint.top,eax,ecx,\
             h_dc_snake_head,st_ps.rcPaint.left,st_ps.rcPaint.top,SRCCOPY
         invoke	EndPaint,h_window,addr st_ps
-
     ; .elseif eax == WM_MOVING
-
+    .elseif eax == WM_KEYUP
+        mov eax, wParam
+        call _check_operation
     .elseif eax == WM_CLOSE
         invoke	KillTimer,h_window_main,1
         invoke DestroyWindow, h_window
