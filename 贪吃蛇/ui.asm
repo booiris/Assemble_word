@@ -19,6 +19,7 @@ ICO_MAIN equ 100
 back_ground equ 100
 snake_head equ 101
 snake_head_mask equ 102
+snake_body equ 103
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -37,10 +38,14 @@ player1_y dword 50
 speed dword 1
 player1_x_dir dword 1
 player1_y_dir dword 0
-fps dword 8
+fps dword 4
 now_window_state dword 1
 buffer_cnt dword 1
 create_buffer dword 1
+window_x_len dword 30
+window_y_len dword 17
+mv_cnt dword 0
+
 
 .const
 
@@ -48,6 +53,7 @@ str_main_caption byte 'Ã∞≥‘…ﬂ', 0
 str_class_name byte 'main_window_class', 0
 str_status_class_name byte 'status_class', 0
 
+; invoke MessageBox, h_window_m ain, NULL, NULL, MB_OK
 
 .data?
 
@@ -59,6 +65,7 @@ h_window_status dword ?
 h_dc_background dword ?
 h_dc_background_size dword ?
 h_dc_snake_head dword ?
+h_dc_snake_body dword ?
 h_dc_snake_head_mask dword ?
 h_timer dword ?
 
@@ -68,31 +75,50 @@ h_dc_main_window_2 dword ?
 h_dc_main_window_size_2 dword ?
 h_dc_main_window dword ?
 
+mp  dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+    dword 30 dup (?)
+
+
 .code
 
 _create_background PROC
     local h_dc, h_bmp_background
-    local h_bmp_snake_head,h_bmp_snake_head_mask
+    local h_bmp_snake_head,h_bmp_snake_head_mask,h_bmp_snake_body
     
     invoke GetDC, h_window_main
     mov h_dc, eax
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_background, eax
-    invoke CreateCompatibleBitmap, h_dc, 1100, 660
+    invoke CreateCompatibleBitmap, h_dc, 1200, 680
     mov h_dc_background_size, eax
 
     invoke	SelectObject,h_dc_background,h_dc_background_size 
 
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_main_window_1, eax
-    invoke CreateCompatibleBitmap, h_dc, 1100, 660
+    invoke CreateCompatibleBitmap, h_dc, 1200, 680
     mov h_dc_main_window_size_1, eax
 
     invoke	SelectObject,h_dc_main_window_1,h_dc_main_window_size_1
 
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_main_window_2, eax
-    invoke CreateCompatibleBitmap, h_dc, 1100, 660
+    invoke CreateCompatibleBitmap, h_dc, 1200, 680
     mov h_dc_main_window_size_2, eax
 
     invoke	SelectObject,h_dc_main_window_2,h_dc_main_window_size_2
@@ -110,21 +136,38 @@ _create_background PROC
     mov	h_bmp_snake_head,eax
     invoke LoadBitmap,h_instance, snake_head_mask
     mov h_bmp_snake_head_mask, eax
+    invoke LoadBitmap,h_instance, snake_body
+    mov h_bmp_snake_body, eax
 
     invoke	SelectObject,h_dc_snake_head, h_bmp_snake_head
     invoke SelectObject,h_dc_snake_head_mask, h_bmp_snake_head_mask
+    invoke SelectObject,h_dc_snake_body, h_bmp_snake_body
 
     invoke	CreatePatternBrush,h_bmp_background
     push	eax
     invoke	SelectObject,h_dc_background,eax
-    invoke	PatBlt,h_dc_background,0,0,1100, 660,PATCOPY
+    invoke	PatBlt,h_dc_background,0,0,1200, 680,PATCOPY
     pop	eax
     invoke	DeleteObject,eax    
 
     invoke SetStretchBltMode,h_dc_main_window_1,HALFTONE
-    invoke	BitBlt,h_dc_main_window_1,0,0,1100,660,h_dc_background,0,0,SRCCOPY
-    invoke	StretchBlt,h_dc_main_window_1,player1_x,player1_y,136, 136,h_dc_snake_head_mask,0,0,136,136,SRCAND
-    invoke	StretchBlt,h_dc_main_window_1,player1_x,player1_y,136, 136,h_dc_snake_head,0,0,136,136,SRCPAINT
+    invoke SetStretchBltMode,h_dc_main_window_2,HALFTONE
+    invoke	BitBlt,h_dc_main_window_1,0,0,1200,680,h_dc_background,0,0,SRCCOPY
+    invoke	StretchBlt,h_dc_main_window_1,player1_x,player1_y,40, 40,h_dc_snake_head_mask,0,0,136,136,SRCAND
+    invoke	StretchBlt,h_dc_main_window_1,player1_x,player1_y,40, 40,h_dc_snake_head,0,0,136,136,SRCPAINT
+
+    mov esi, player1_x
+    mov edi, player1_y
+    mov mp[esi][edi], 1
+    mov eax, -40
+    imul eax, player1_x_dir
+    add esi, eax
+
+    mov eax, -40
+    imul eax, player1_y_dir
+    add edi, eax
+    mov mp[esi][edi], 2
+
 
     invoke	DeleteObject,h_bmp_background
     invoke	DeleteObject,h_bmp_snake_head
@@ -140,13 +183,13 @@ _create_background ENDP
 _draw_window PROC 
     local h_dc
 
-    .while buffer_cnt == 0
+    .while buffer_cnt == 0 && mv_cnt < 40
     .endw
 
     invoke GetDC, h_window_main
     mov	h_dc,eax
 
-    invoke	BitBlt,h_dc,0,0,1100,660,\
+    invoke	BitBlt,h_dc,0,0,1200,680,\
         h_dc_main_window,0,0,SRCCOPY
 
     invoke ReleaseDC,h_window_main,h_dc 
@@ -161,8 +204,8 @@ _draw_window PROC
     .endif
 
     dec buffer_cnt
+    inc mv_cnt
 
-    invoke timeKillEvent, h_timer
     invoke timeSetEvent,fps,1,_draw_window,NULL,TIME_ONESHOT
     mov h_timer, eax
 
@@ -170,10 +213,14 @@ _draw_window PROC
 _draw_window ENDP
 
 _create_buffer PROC 
-    local @h_dc_main_window:dword
+    local @h_dc_main_window:dword, @player1_x_dir, @player1_y_dir
+    mov ecx, player1_x_dir
+    mov @player1_x_dir, ecx
+    mov ecx, player1_y_dir
+    mov @player1_y_dir, ecx
+
     .while create_buffer == 1
         .if buffer_cnt < 2
-            push ecx
             mov ecx, h_dc_main_window_1
             .if ecx == h_dc_main_window
                 mov ecx, h_dc_main_window_2
@@ -182,17 +229,39 @@ _create_buffer PROC
                 mov ecx, h_dc_main_window_1
                 mov @h_dc_main_window, ecx
             .endif
-            invoke	BitBlt,@h_dc_main_window,0,0,1100,660,h_dc_background,0,0,SRCCOPY
+
+            invoke	BitBlt,@h_dc_main_window,0,0,1200,680,h_dc_background,0,0,SRCCOPY
             mov ecx, speed
-            imul ecx, player1_x_dir
+            imul ecx, @player1_x_dir
             add player1_x, ecx
 
             mov ecx, speed
-            imul ecx, player1_y_dir
+            imul ecx, @player1_y_dir
             add player1_y, ecx
-            invoke	StretchBlt,@h_dc_main_window,player1_x,player1_y,136, 136,h_dc_snake_head_mask,0,0,136,136,SRCAND
-            invoke	StretchBlt,@h_dc_main_window,player1_x,player1_y,136, 136,h_dc_snake_head,0,0,136,136,SRCPAINT
-            pop ecx
+            invoke	StretchBlt,@h_dc_main_window,player1_x,player1_y,40, 40,h_dc_snake_head_mask,0,0,136,136,SRCAND
+            invoke	StretchBlt,@h_dc_main_window,player1_x,player1_y,40, 40,h_dc_snake_head,0,0,136,136,SRCPAINT
+
+            mov esi, player1_x
+            mov edi, player1_y
+            mov eax, -40
+            imul eax, player1_x_dir
+            add esi, eax
+
+            mov eax, -40
+            imul eax, player1_y_dir
+            add edi, eax
+
+            invoke	StretchBlt,@h_dc_main_window,esi,edi,40, 40,h_dc_snake_head_mask,0,0,136,136,SRCAND
+            invoke	StretchBlt,@h_dc_main_window,esi,edi,40, 40,h_dc_snake_body,0,0,136,136,SRCPAINT
+
+            .if mv_cnt > 40
+                mov ecx, player1_x_dir
+                mov @player1_x_dir, ecx
+                mov ecx, player1_y_dir
+                mov @player1_y_dir, ecx
+                mov mv_cnt, 0
+            .endif
+
             inc buffer_cnt
         .endif
     .endw
@@ -209,7 +278,6 @@ _init ENDP
 
 _check_operation PROC 
     .if eax == key_w && player1_y_dir != 1
-        ; invoke MessageBox, h_window_m ain, NULL, NULL, MB_OK
         mov player1_x_dir, 0
         mov player1_y_dir, -1
     .elseif eax == key_s && player1_y_dir != -1
@@ -250,7 +318,7 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
     ;         h_dc_main_window_1,st_ps.rcPaint.left,st_ps.rcPaint.top,SRCCOPY
     ;     invoke	EndPaint,h_window,addr st_ps
     ; .elseif eax == WM_MOVING
-    .elseif eax == WM_KEYUP
+    .elseif eax == WM_KEYDOWN
         mov eax, wParam
         call _check_operation
     .elseif eax == WM_CLOSE
@@ -292,7 +360,7 @@ _main_window PROC
     mov st_window_class.lpszClassName, offset str_class_name
     invoke RegisterClassEx, addr st_window_class
 
-    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 50, 1100, 660, NULL, NULL, h_instance, NULL
+    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 30, 1200, 680, NULL, NULL, h_instance, NULL
     mov h_window_main, eax
     invoke ShowWindow, h_window_main, SW_SHOWNORMAL
     invoke UpdateWindow, h_window_main
