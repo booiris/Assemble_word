@@ -8,5 +8,5 @@
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
 back_ground BITMAP      "temp_ground.bmp"
-snake_head  BITMAP      "moose.bmp"
-snake_head_mask BITMAP  "moose_mask.bmp"
+snake_head  BITMAP      "penguin.bmp"
+snake_head_mask BITMAP  "penguin_mask.bmp"
