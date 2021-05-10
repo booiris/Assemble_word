@@ -16,6 +16,7 @@ includelib msvcrt.lib
 ICO_MAIN equ 100
 back_ground equ 100
 snake_head equ 101
+snake_head_mask equ 102
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -24,6 +25,7 @@ key_up equ 26h
 key_down equ 28h
 key_left equ 25h
 key_right equ 27h
+
 
 
 .data
@@ -45,67 +47,76 @@ str_status_class_name byte 'status_class', 0
 
 h_instance dword ?
 h_window_main dword ?
-h_main_cursor dword ?
 h_window_player1 dword ?
 h_window_player2 dword ?
 h_window_status dword ?
-h_dc_back dword ?
-h_bmp_back dword ? ;TODOÉ¾³ý¾ä±ú£¬ÊÍ·Å¶ÔÏó
-h_dc_copy dword ?
+h_dc_background dword ?
+h_dc_background_size dword ?
 h_dc_snake_head dword ?
+h_dc_snake_head_mask dword ?
+
+h_dc_main_window dword ?
+h_dc_main_window_size dword ?
 
 .code
 
 _create_background PROC
-    local h_dc, h_back
-    local h_bmp_snake_head,h_bmp_head
+    local h_dc, h_bmp_background
+    local h_bmp_snake_head,h_bmp_snake_head_mask
     
     invoke GetDC, h_window_main
     mov h_dc, eax
     invoke	CreateCompatibleDC, h_dc
-	mov	h_dc_back, eax
+	mov	h_dc_background, eax
     invoke CreateCompatibleBitmap, h_dc, 1100, 650
-    mov h_bmp_back, eax
+    mov h_dc_background_size, eax
+
+    invoke	SelectObject,h_dc_background,h_dc_background_size 
+
+    invoke	CreateCompatibleDC, h_dc
+	mov	h_dc_main_window, eax
+    invoke CreateCompatibleBitmap, h_dc, 1100, 650
+    mov h_dc_main_window_size, eax
+
+    invoke	SelectObject,h_dc_main_window,h_dc_main_window_size
 
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_snake_head, eax
     invoke	CreateCompatibleDC, h_dc
-	mov	h_dc_copy, eax
-    invoke CreateCompatibleBitmap, h_dc, 1100, 650
-    mov h_bmp_snake_head, eax
+	mov	h_dc_snake_head_mask, eax
 
     invoke ReleaseDC,h_window_main,h_dc 
 
     invoke	LoadBitmap,h_instance, back_ground
-	mov	h_back,eax
+	mov	h_bmp_background,eax
     invoke	LoadBitmap,h_instance,snake_head
-    mov	h_bmp_head,eax
+    mov	h_bmp_snake_head,eax
+    invoke LoadBitmap,h_instance, snake_head_mask
+    mov h_bmp_snake_head_mask, eax
 
-    invoke	SelectObject,h_dc_back,h_bmp_back 
     invoke	SelectObject,h_dc_snake_head, h_bmp_snake_head
-    invoke  SelectObject, h_dc_copy, h_bmp_head
+    invoke SelectObject,h_dc_snake_head_mask, h_bmp_snake_head_mask
 
-    invoke	CreatePatternBrush,h_back
+    invoke	CreatePatternBrush,h_bmp_background
     push	eax
-    invoke	SelectObject,h_dc_back,eax
-    invoke	PatBlt,h_dc_back,0,0,1100, 650,PATCOPY
+    invoke	SelectObject,h_dc_background,eax
+    invoke	PatBlt,h_dc_background,0,0,1100, 650,PATCOPY
     pop	eax
     invoke	DeleteObject,eax    
 
-    invoke SetStretchBltMode,h_dc_snake_head,HALFTONE
-    invoke SetStretchBltMode,h_dc_copy,HALFTONE
-    invoke	BitBlt,h_dc_snake_head,0,0,1100,650,h_dc_back,0,0,SRCCOPY
+    invoke SetStretchBltMode,h_dc_main_window,HALFTONE
+    invoke	BitBlt,h_dc_main_window,0,0,1100,650,h_dc_background,0,0,SRCCOPY
 
+    invoke	DeleteObject,h_bmp_background
     invoke	DeleteObject,h_bmp_snake_head
-    invoke	DeleteObject,h_bmp_head
-    invoke  DeleteObject, h_back
+    invoke	DeleteObject,h_bmp_snake_head_mask
     
     ret 
 _create_background ENDP
 
     
 _Drawsnake PROC 
-    invoke	BitBlt,h_dc_snake_head,0,0,1100,650,h_dc_back,0,0,SRCCOPY
+    invoke	BitBlt,h_dc_main_window,0,0,1100,650,h_dc_background,0,0,SRCCOPY
     mov eax, speed
     imul eax, player1_x_dir
     add player1_x, eax
@@ -113,7 +124,8 @@ _Drawsnake PROC
     mov eax, speed
     imul eax, player1_y_dir
     add player1_y, eax
-    invoke	StretchBlt,h_dc_snake_head,player1_x,player1_y,62, 40,h_dc_copy,0,0,268,162,SRCCOPY
+    invoke	StretchBlt,h_dc_main_window,player1_x,player1_y,62, 40,h_dc_snake_head_mask,0,0,268,162,SRCAND
+    invoke	StretchBlt,h_dc_main_window,player1_x,player1_y,62, 40,h_dc_snake_head,0,0,268,162,SRCPAINT
 
     ret
 _Drawsnake ENDP
@@ -125,17 +137,17 @@ _init PROC
 _init ENDP
 
 _check_operation PROC 
-    .if eax == key_w
-        ; invoke MessageBox, h_window_main, NULL, NULL, MB_OK
+    .if eax == key_w && player1_y_dir != 1
+        ; invoke MessageBox, h_window_m ain, NULL, NULL, MB_OK
         mov player1_x_dir, 0
         mov player1_y_dir, -1
-    .elseif eax == key_s
+    .elseif eax == key_s && player1_y_dir != -1
         mov player1_x_dir, 0
         mov player1_y_dir, 1
-    .elseif eax == key_a
+    .elseif eax == key_a && player1_x_dir != 1
         mov player1_x_dir, -1
         mov player1_y_dir, 0
-    .elseif eax == key_d
+    .elseif eax == key_d && player1_x_dir != -1
         mov player1_x_dir, 1
         mov player1_y_dir, 0
     
@@ -167,7 +179,7 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         sub	ecx,st_ps.rcPaint.top
 
         invoke	BitBlt,h_dc,st_ps.rcPaint.left,st_ps.rcPaint.top,eax,ecx,\
-            h_dc_snake_head,st_ps.rcPaint.left,st_ps.rcPaint.top,SRCCOPY
+            h_dc_main_window,st_ps.rcPaint.left,st_ps.rcPaint.top,SRCCOPY
         invoke	EndPaint,h_window,addr st_ps
     ; .elseif eax == WM_MOVING
     .elseif eax == WM_KEYUP
