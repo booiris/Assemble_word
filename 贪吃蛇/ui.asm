@@ -68,7 +68,6 @@ h_dc_background_size dword ?
 h_dc_snake_head dword ?
 h_dc_snake_body dword ?
 h_dc_snake_head_mask dword ?
-h_timer dword ?
 
 h_dc_buffer dword frame_length dup (?)
 h_dc_buffer_size dword frame_length dup(?)
@@ -182,7 +181,6 @@ _draw_window PROC
     .endif
 
     invoke timeSetEvent,fps,1,_draw_window,NULL,TIME_ONESHOT
-    mov h_timer, eax
 
     ret
 _draw_window ENDP
@@ -235,7 +233,6 @@ _init PROC
     call _create_background
     invoke CreateThread, NULL, 0,_create_buffer ,NULL,0,NULL
     invoke timeSetEvent,fps,1,_draw_window,NULL,TIME_ONESHOT
-    mov h_timer, eax
     ret
 _init ENDP
 
@@ -286,10 +283,8 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         call _check_operation
     .elseif eax == WM_CLOSE
         mov create_buffer, 0
-        invoke	KillTimer,h_window_main,1
         invoke DestroyWindow, h_window
         invoke PostQuitMessage, NULL
-        invoke timeKillEvent, h_timer
     
     .else
         invoke DefWindowProc, h_window, u_msg, wParam, lParam
