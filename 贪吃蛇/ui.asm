@@ -28,13 +28,16 @@ key_up equ 26h
 key_down equ 28h
 key_left equ 25h
 key_right equ 27h
-frame_length equ 30
+window_x_len equ 30
+window_y_len equ 17
+cell_size equ 40
+buffer_size equ 40
 
 
 .data
 
-player1_x dword 10
-player1_y dword 50
+player1_x dword 8
+player1_y dword 20
 speed dword 1
 player1_x_dir dword 1
 player1_y_dir dword 0
@@ -43,12 +46,13 @@ now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1
 buffer_index dword 0
-cell_size dword 36
 
 
+printf PROTO C :dword, :vararg
 
 .const
 
+out_format_int byte '%d', 20h,0
 
 str_main_caption byte 'Ã∞≥‘…ﬂ', 0
 str_class_name byte 'main_window_class', 0
@@ -69,27 +73,12 @@ h_dc_snake_head dword ?
 h_dc_snake_body dword ?
 h_dc_snake_head_mask dword ?
 
-h_dc_buffer dword frame_length dup (?)
-h_dc_buffer_size dword frame_length dup(?)
+h_dc_buffer dword buffer_size dup (?)
+h_dc_buffer_size dword buffer_size dup(?)
 
-mp  dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
-    dword frame_length dup (?)
+mp  dword window_x_len*window_y_len dup (?)
 
+state  dword window_x_len*window_y_len dup (?)
 
 .code
 
@@ -109,7 +98,7 @@ _create_background PROC
     mov @cnt, 0
     mov esi, offset h_dc_buffer
     mov edi, offset h_dc_buffer_size
-    .while @cnt != frame_length
+    .while @cnt != buffer_size
         invoke	CreateCompatibleDC, h_dc
         mov	[esi], eax
         invoke CreateCompatibleBitmap, h_dc, 1200, 680
@@ -155,6 +144,15 @@ _create_background PROC
     invoke	DeleteObject,h_bmp_snake_head_mask
     invoke	DeleteObject,h_bmp_snake_body
 
+    mov eax, player1_x
+    imul eax, window_x_len
+    add eax, player1_y
+    mov mp[4*eax], 1
+    mov state[4*eax], 2
+    dec eax
+    mov mp[4*eax], 2
+    mov state[4*eax], 2
+
     ret 
 _create_background ENDP
 
@@ -176,8 +174,9 @@ _draw_window PROC
 
     dec buffer_cnt
     inc buffer_index
-    .if buffer_index == frame_length
+    .if buffer_index == buffer_size
         mov buffer_index, 0
+        ret
     .endif
 
     invoke timeSetEvent,fps,1,_draw_window,NULL,TIME_ONESHOT
@@ -185,44 +184,100 @@ _draw_window PROC
     ret
 _draw_window ENDP
 
+_draw_head PROC uses esi, player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
+    local @player_x,@player_y, @dis
+    mov ecx, index_x
+    imul ecx, cell_size
+    mov @player_x, ecx
+    mov ecx, index_y
+    imul ecx, cell_size
+    mov @player_y, ecx
+    mov ecx, speed
+    imul ecx, frame_time
+    .if dir == 1
+        neg ecx
+        add @player_x, ecx
+    .elseif dir == 2
+        add @player_y, ecx
+    .elseif dir == 3
+        add @player_x, ecx
+    .elseif dir == 4
+        neg ecx
+        add @player_y, ecx
+    .endif
+
+    mov esi, frame_time
+    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_head_mask,0,0,136,136,SRCAND
+    mov esi, frame_time
+    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_head,0,0,136,136,SRCPAINT
+    ret
+_draw_head ENDP
+
+_draw_body PROC player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
+    local @player_x,@player_y, @dis
+    mov ecx, index_x
+    imul ecx, cell_size
+    mov @player_x, ecx
+    mov ecx, index_y
+    imul ecx, cell_size
+    mov @player_y, ecx
+    mov ecx, speed
+    imul ecx, frame_time
+    .if dir == 1
+        neg ecx
+        add @player_x, ecx
+    .elseif dir == 2
+        add @player_y, ecx
+    .elseif dir == 3
+        add @player_x, ecx
+    .elseif dir == 4
+        neg ecx
+        add @player_y, ecx
+    .endif
+
+    mov esi, frame_time
+    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_head_mask,0,0,136,136,SRCAND
+    mov esi, frame_time
+    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_body,0,0,136,136,SRCPAINT
+    ret
+_draw_body ENDP
+
+
 _create_buffer PROC 
-    local @player1_x_dir, @player1_y_dir,@cnt
-    push ecx
-    mov ecx, player1_x_dir
-    mov @player1_x_dir, ecx
-    mov ecx, player1_y_dir
-    mov @player1_y_dir, ecx
-    pop ecx
+    local @cnt,@index
 
     .while create_buffer == 1
         .while buffer_cnt != 0
         .endw
 
-        push ecx
-        mov ecx, player1_x_dir
-        mov @player1_x_dir, ecx
-        mov ecx, player1_y_dir
-        mov @player1_y_dir, ecx
-        pop ecx
-
         mov @cnt, 0
-        .while @cnt < frame_length
-            push esi
+        .while @cnt < buffer_size
             mov esi, @cnt
             invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,680,h_dc_background,0,0,SRCCOPY
-            mov ecx, speed
-            imul ecx, @player1_x_dir
-            add player1_x, ecx
 
-            mov ecx, speed
-            imul ecx, @player1_y_dir
-            add player1_y, ecx
-            invoke	StretchBlt,h_dc_buffer[4*esi],player1_x,player1_y,cell_size, cell_size,h_dc_snake_head_mask,0,0,136,136,SRCAND
-            invoke	StretchBlt,h_dc_buffer[4*esi],player1_x,player1_y,cell_size, cell_size,h_dc_snake_head,0,0,136,136,SRCPAINT
+            mov @index, 0
+            .while @index < window_x_len*window_y_len
+                push eax
+                xor edx,edx
+                mov eax, @index
+                mov ecx, window_x_len
+                div ecx
+                mov esi, eax
+                mov edi, edx
+                pop eax
+                mov edx, @index
+                mov ecx, mp[4*edx]
+                .if ecx == 1
+                    invoke _draw_head, 1, esi, edi,state[4*edx],@cnt
+                .elseif ecx == 2
+                    invoke _draw_body, 1, esi, edi,state[4*edx],@cnt
+                .endif 
+                inc @index
+            .endw
 
+            
             inc buffer_cnt
             inc @cnt
-            pop esi
         .endw
 
     .endw
@@ -318,7 +373,7 @@ _main_window PROC
     mov st_window_class.lpszClassName, offset str_class_name
     invoke RegisterClassEx, addr st_window_class
 
-    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, frame_length, 1200, 680, NULL, NULL, h_instance, NULL
+    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 50, 1200, 680, NULL, NULL, h_instance, NULL
     mov h_window_main, eax
     invoke ShowWindow, h_window_main, SW_SHOWNORMAL
     invoke UpdateWindow, h_window_main
