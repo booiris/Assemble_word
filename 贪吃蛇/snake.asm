@@ -33,6 +33,11 @@ window_y_len equ 17
 cell_size equ 40
 buffer_size equ 40
 
+public h_dc_buffer, h_dc_snake_head_mask, h_dc_snake_body, h_dc_snake_head, speed
+
+printf PROTO C :dword, :vararg
+_draw_head PROTO, :dword, :dword, :dword, :dword, :dword
+_draw_body PROTO, :dword, :dword, :dword, :dword, :dword
 
 .data
 
@@ -46,9 +51,6 @@ now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1
 buffer_index dword 0
-
-
-printf PROTO C :dword, :vararg
 
 .const
 
@@ -76,7 +78,8 @@ h_dc_snake_head_mask dword ?
 h_dc_buffer dword buffer_size dup (?)
 h_dc_buffer_size dword buffer_size dup(?)
 
-mp  dword window_x_len*window_y_len dup (?)
+mp1 dword window_x_len*window_y_len dup (?)
+mp2 dword window_x_len*window_y_len dup (?)
 
 state  dword window_x_len*window_y_len dup (?)
 
@@ -147,10 +150,10 @@ _create_background PROC
     mov eax, player1_x
     imul eax, window_x_len
     add eax, player1_y
-    mov mp[4*eax], 1
+    mov mp1[4*eax], 1
     mov state[4*eax], 2
     dec eax
-    mov mp[4*eax], 2
+    mov mp1[4*eax], 2
     mov state[4*eax], 2
 
     ret 
@@ -184,65 +187,6 @@ _draw_window PROC
     ret
 _draw_window ENDP
 
-_draw_head PROC uses esi, player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
-    local @player_x,@player_y, @dis
-    mov ecx, index_x
-    imul ecx, cell_size
-    mov @player_x, ecx
-    mov ecx, index_y
-    imul ecx, cell_size
-    mov @player_y, ecx
-    mov ecx, speed
-    imul ecx, frame_time
-    .if dir == 1
-        neg ecx
-        add @player_x, ecx
-    .elseif dir == 2
-        add @player_y, ecx
-    .elseif dir == 3
-        add @player_x, ecx
-    .elseif dir == 4
-        neg ecx
-        add @player_y, ecx
-    .endif
-
-    mov esi, frame_time
-    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_head_mask,0,0,136,136,SRCAND
-    mov esi, frame_time
-    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_head,0,0,136,136,SRCPAINT
-    ret
-_draw_head ENDP
-
-_draw_body PROC player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
-    local @player_x,@player_y, @dis
-    mov ecx, index_x
-    imul ecx, cell_size
-    mov @player_x, ecx
-    mov ecx, index_y
-    imul ecx, cell_size
-    mov @player_y, ecx
-    mov ecx, speed
-    imul ecx, frame_time
-    .if dir == 1
-        neg ecx
-        add @player_x, ecx
-    .elseif dir == 2
-        add @player_y, ecx
-    .elseif dir == 3
-        add @player_x, ecx
-    .elseif dir == 4
-        neg ecx
-        add @player_y, ecx
-    .endif
-
-    mov esi, frame_time
-    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_head_mask,0,0,136,136,SRCAND
-    mov esi, frame_time
-    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_body,0,0,136,136,SRCPAINT
-    ret
-_draw_body ENDP
-
-
 _create_buffer PROC 
     local @cnt,@index
 
@@ -255,6 +199,8 @@ _create_buffer PROC
             mov esi, @cnt
             invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,680,h_dc_background,0,0,SRCCOPY
 
+            ; 调用行为运算函数，原来地图，更新地图，状态图
+
             mov @index, 0
             .while @index < window_x_len*window_y_len
                 push eax
@@ -266,16 +212,29 @@ _create_buffer PROC
                 mov edi, edx
                 pop eax
                 mov edx, @index
-                mov ecx, mp[4*edx]
+                mov ecx, mp1[4*edx]
                 .if ecx == 1
-                    invoke _draw_head, 1, esi, edi,state[4*edx],@cnt
+                    invoke _draw_head, 1, esi, edi,state[4*edx],@cnt ;画1号蛇头
                 .elseif ecx == 2
-                    invoke _draw_body, 1, esi, edi,state[4*edx],@cnt
+                    invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画1号蛇身
+                .elseif ecx == 3
+                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画1号蛇尾
+                .elseif ecx == 4
+                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画2号蛇头
+                .elseif ecx == 5
+                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画2号蛇身
+                .elseif ecx == 6
+                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画2号蛇尾
+                .elseif ecx == 7
+                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画墙
+                .elseif ecx == 6
+                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画道具
                 .endif 
                 inc @index
             .endw
 
-            
+            ; 更新地图
+
             inc buffer_cnt
             inc @cnt
         .endw
