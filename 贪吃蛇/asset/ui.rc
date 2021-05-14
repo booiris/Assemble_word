@@ -6,9 +6,13 @@
 #define snake_head      101
 #define snake_body      102
 #define snake_tail      103
+#define apple           104
+#define apple_mask      105
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
 back_ground BITMAP      "temp_ground.bmp"
 snake_head  BITMAP      "head.bmp"
 snake_body  BITMAP      "body.bmp"
 snake_tail  BITMAP      "tail.bmp"
+apple       BITMAP      "apple.bmp"
+apple_mask  BITMAP      "apple_mask.bmp"

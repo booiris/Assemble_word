@@ -20,6 +20,8 @@ back_ground equ 100
 snake_head equ 101
 snake_body equ 102
 snake_tail equ 103
+apple      equ 104
+apple_mask equ 105
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -28,26 +30,27 @@ key_up equ 26h
 key_down equ 28h
 key_left equ 25h
 key_right equ 27h
-window_x_len equ 30
-window_y_len equ 17
-cell_size equ 40
-buffer_size equ 100
+window_x_len equ 24
+window_y_len equ 14
+cell_size equ 50
+buffer_size equ 50
 
-public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail
+public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask
 
 printf PROTO C :dword, :vararg
 _draw_head PROTO, :dword, :dword, :dword, :dword, :dword
 _draw_body PROTO, :dword, :dword, :dword, :dword, :dword
 _draw_tail PROTO, :dword, :dword, :dword, :dword, :dword
+_draw_apple PROTO, :dword, :dword, :dword
 
 .data
 
-player1_x dword 4
+player1_x dword 0
 player1_y dword 10
 speed dword 1
 player1_x_dir dword 1
 player1_y_dir dword 0
-fps dword 4
+fps dword 5
 now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1
@@ -75,6 +78,8 @@ h_dc_background_size dword ?
 h_dc_snake_head dword ?
 h_dc_snake_body dword ?
 h_dc_snake_tail dword ?
+h_dc_apple dword ?
+h_dc_apple_mask dword ?
 h_dc_bmp dword ?
 h_dc_bmp_size dword ?
 
@@ -96,7 +101,7 @@ _create_background PROC
     mov h_dc, eax
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_background, eax
-    invoke CreateCompatibleBitmap, h_dc, 1200, 680
+    invoke CreateCompatibleBitmap, h_dc, 1200, 700
     mov h_dc_background_size, eax
 
     invoke	SelectObject,h_dc_background,h_dc_background_size 
@@ -107,7 +112,7 @@ _create_background PROC
     .while @cnt != buffer_size
         invoke	CreateCompatibleDC, h_dc
         mov	[esi], eax
-        invoke CreateCompatibleBitmap, h_dc, 1200, 680
+        invoke CreateCompatibleBitmap, h_dc, 1200, 700
         mov [edi], eax
         invoke	SelectObject,[esi],[edi]
         invoke SetStretchBltMode,[esi],HALFTONE
@@ -125,19 +130,17 @@ _create_background PROC
     invoke  CreateCompatibleDC, h_dc
     mov h_dc_snake_tail, eax
 
-    invoke CreateCompatibleBitmap, h_dc,1200,680
+    invoke CreateCompatibleBitmap, h_dc,1200,700
     mov h_dc_bmp_size, eax
     invoke	SelectObject,h_dc_bmp,h_dc_bmp_size
     invoke SetStretchBltMode,h_dc_bmp,COLORONCOLOR
-
-    invoke ReleaseDC,h_window_main,h_dc 
 
     invoke	LoadBitmap,h_instance, back_ground
 	mov	h_bmp,eax
     invoke	CreatePatternBrush,h_bmp
     push	eax
     invoke	SelectObject,h_dc_background,eax
-    invoke	PatBlt,h_dc_background,0,0,1200, 680,PATCOPY
+    invoke	PatBlt,h_dc_background,0,0,1200, 700,PATCOPY
     pop	eax
     invoke	DeleteObject,eax    
     invoke	DeleteObject,h_bmp
@@ -157,6 +160,20 @@ _create_background PROC
     invoke SelectObject,h_dc_snake_tail, h_bmp
     invoke	DeleteObject,h_bmp
 
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_apple, eax
+    invoke LoadBitmap,h_instance, apple
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_apple, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_apple_mask, eax
+    invoke LoadBitmap,h_instance, apple_mask
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_apple_mask, h_bmp
+    invoke	DeleteObject,h_bmp
+
     mov eax, player1_x
     imul eax, window_x_len
     add eax, player1_y
@@ -172,6 +189,11 @@ _create_background PROC
     mov mp1[4*eax], 3
     mov state[4*eax], 2
 
+    dec eax
+    mov mp1[4*eax], 8
+    mov state[4*eax], 2
+
+    invoke ReleaseDC,h_window_main,h_dc 
     ret 
 _create_background ENDP
 
@@ -186,7 +208,7 @@ _draw_window PROC
     mov	h_dc,eax
 
     mov eax, buffer_index
-    invoke	BitBlt,h_dc,0,0,1200,680,\
+    invoke	BitBlt,h_dc,0,0,1200,700,\
         h_dc_buffer[4*eax],0,0,SRCCOPY
 
     invoke ReleaseDC,h_window_main,h_dc 
@@ -213,7 +235,7 @@ _create_buffer PROC
         mov @cnt, 0
         .while @cnt < buffer_size
             mov esi, @cnt
-            invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,680,h_dc_background,0,0,SRCCOPY
+            invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,700,h_dc_background,0,0,SRCCOPY
 
             ; 调用行为运算函数，原来地图，更新地图，状态图
 
@@ -241,8 +263,8 @@ _create_buffer PROC
                     ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画2号蛇尾
                 .elseif ecx == 7
                     ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画墙
-                .elseif ecx == 6
-                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画道具
+                .elseif ecx == 8
+                    invoke _draw_apple, esi, edi,@cnt ;画苹果
                 .endif 
                 inc @index
             .endw
@@ -370,7 +392,7 @@ _main_window PROC
     mov st_window_class.lpszClassName, offset str_class_name
     invoke RegisterClassEx, addr st_window_class
 
-    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 50, 1200, 680, NULL, NULL, h_instance, NULL
+    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 50, 1200, 700, NULL, NULL, h_instance, NULL
     mov h_window_main, eax
     invoke ShowWindow, h_window_main, SW_SHOWNORMAL
     invoke UpdateWindow, h_window_main
