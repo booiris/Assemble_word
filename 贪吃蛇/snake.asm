@@ -18,9 +18,8 @@ includelib msvcrt.lib
 ICO_MAIN equ 100
 back_ground equ 100
 snake_head equ 101
-snake_head_mask equ 102
-snake_body equ 103
-snake_body_mask equ 104
+snake_body equ 102
+snake_tail equ 103
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -32,18 +31,19 @@ key_right equ 27h
 window_x_len equ 30
 window_y_len equ 17
 cell_size equ 40
-buffer_size equ 40
+buffer_size equ 100
 
-public h_dc_buffer, h_dc_snake_head_mask, h_dc_snake_body, h_dc_snake_head,h_dc_snake_body_mask, speed
+public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail
 
 printf PROTO C :dword, :vararg
 _draw_head PROTO, :dword, :dword, :dword, :dword, :dword
 _draw_body PROTO, :dword, :dword, :dword, :dword, :dword
+_draw_tail PROTO, :dword, :dword, :dword, :dword, :dword
 
 .data
 
-player1_x dword 8
-player1_y dword 20
+player1_x dword 4
+player1_y dword 10
 speed dword 1
 player1_x_dir dword 1
 player1_y_dir dword 0
@@ -74,8 +74,9 @@ h_dc_background dword ?
 h_dc_background_size dword ?
 h_dc_snake_head dword ?
 h_dc_snake_body dword ?
-h_dc_snake_body_mask dword ?
-h_dc_snake_head_mask dword ?
+h_dc_snake_tail dword ?
+h_dc_bmp dword ?
+h_dc_bmp_size dword ?
 
 h_dc_buffer dword buffer_size dup (?)
 h_dc_buffer_size dword buffer_size dup(?)
@@ -89,7 +90,7 @@ state  dword window_x_len*window_y_len dup (?)
 
 _create_background PROC
     local h_dc, h_bmp_background, @cnt
-    local h_bmp_snake_head,h_bmp_snake_head_mask,h_bmp_snake_body,h_bmp_snake_body_mask
+    local h_bmp
     
     invoke GetDC, h_window_main
     mov h_dc, eax
@@ -118,42 +119,43 @@ _create_background PROC
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_snake_head, eax
     invoke	CreateCompatibleDC, h_dc
-	mov	h_dc_snake_head_mask, eax
-    invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_snake_body, eax
     invoke	CreateCompatibleDC, h_dc
-	mov	h_dc_snake_body_mask, eax
+	mov	h_dc_bmp, eax
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_snake_tail, eax
+
+    invoke CreateCompatibleBitmap, h_dc,1200,680
+    mov h_dc_bmp_size, eax
+    invoke	SelectObject,h_dc_bmp,h_dc_bmp_size
+    invoke SetStretchBltMode,h_dc_bmp,COLORONCOLOR
 
     invoke ReleaseDC,h_window_main,h_dc 
 
     invoke	LoadBitmap,h_instance, back_ground
-	mov	h_bmp_background,eax
-    invoke	LoadBitmap,h_instance,snake_head
-    mov	h_bmp_snake_head,eax
-    invoke LoadBitmap,h_instance, snake_head_mask
-    mov h_bmp_snake_head_mask, eax
-    invoke LoadBitmap,h_instance, snake_body
-    mov h_bmp_snake_body, eax
-    invoke LoadBitmap,h_instance, snake_body_mask
-    mov h_bmp_snake_body_mask, eax
-
-    invoke	SelectObject,h_dc_snake_head, h_bmp_snake_head
-    invoke SelectObject,h_dc_snake_head_mask, h_bmp_snake_head_mask
-    invoke SelectObject,h_dc_snake_body, h_bmp_snake_body
-    invoke SelectObject,h_dc_snake_body_mask, h_bmp_snake_body_mask
-
-    invoke	CreatePatternBrush,h_bmp_background
+	mov	h_bmp,eax
+    invoke	CreatePatternBrush,h_bmp
     push	eax
     invoke	SelectObject,h_dc_background,eax
     invoke	PatBlt,h_dc_background,0,0,1200, 680,PATCOPY
     pop	eax
     invoke	DeleteObject,eax    
+    invoke	DeleteObject,h_bmp
 
-    invoke	DeleteObject,h_bmp_background
-    invoke	DeleteObject,h_bmp_snake_head
-    invoke	DeleteObject,h_bmp_snake_head_mask
-    invoke	DeleteObject,h_bmp_snake_body
-    invoke	DeleteObject,h_bmp_snake_body_mask
+    invoke	LoadBitmap,h_instance,snake_head
+    mov	h_bmp,eax
+    invoke SelectObject,h_dc_snake_head, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke LoadBitmap,h_instance, snake_body
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_snake_body, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke LoadBitmap,h_instance, snake_tail
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_snake_tail, h_bmp
+    invoke	DeleteObject,h_bmp
 
     mov eax, player1_x
     imul eax, window_x_len
@@ -165,6 +167,9 @@ _create_background PROC
     mov state[4*eax], 2
     dec eax
     mov mp1[4*eax], 2
+    mov state[4*eax], 2
+    dec eax
+    mov mp1[4*eax], 3
     mov state[4*eax], 2
 
     ret 
@@ -227,7 +232,7 @@ _create_buffer PROC
                 .elseif ecx == 2
                     invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;ª≠1∫≈…ﬂ…Ì
                 .elseif ecx == 3
-                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;ª≠1∫≈…ﬂŒ≤
+                    invoke _draw_tail, 1, esi, edi,state[4*edx],@cnt ;ª≠1∫≈…ﬂŒ≤
                 .elseif ecx == 4
                     ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;ª≠2∫≈…ﬂÕ∑
                 .elseif ecx == 5
@@ -277,6 +282,29 @@ _check_operation PROC
     ret
 _check_operation ENDP
 
+_close PROC 
+    local @cnt
+    mov @cnt, 0
+    mov esi, offset h_dc_buffer
+    mov edi, offset h_dc_buffer_size
+    .while @cnt != buffer_size
+        invoke DeleteDC, [esi]
+        invoke DeleteObject, [edi]
+        add esi, 4
+        add edi, 4
+        inc @cnt
+    .endw
+
+    invoke DeleteDC, h_dc_background
+    invoke DeleteDC, h_dc_snake_head
+    invoke DeleteDC, h_dc_snake_body
+    invoke DeleteDC, h_dc_snake_tail
+    invoke DeleteDC, h_dc_bmp
+    invoke DeleteObject, h_dc_background_size
+    invoke DeleteObject, h_dc_bmp_size
+    ret
+_close ENDP
+
 _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
     local st_ps:PAINTSTRUCT
     local h_dc
@@ -306,6 +334,7 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         call _check_operation
     .elseif eax == WM_CLOSE
         mov create_buffer, 0
+        call _close
         invoke DestroyWindow, h_window
         invoke PostQuitMessage, NULL
     

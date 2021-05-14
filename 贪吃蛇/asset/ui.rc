@@ -4,13 +4,11 @@
 #define	ICO_MAIN		100
 #define back_ground     100
 #define snake_head      101
-#define snake_head_mask 102
-#define snake_body      103
-#define snake_body_mask 104
+#define snake_body      102
+#define snake_tail      103
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
 back_ground BITMAP      "temp_ground.bmp"
-snake_head  BITMAP      "penguin.bmp"
-snake_head_mask BITMAP  "head_mask.bmp"
-snake_body  BITMAP  "body.bmp"
-snake_body_mask  BITMAP  "body_mask.bmp"
+snake_head  BITMAP      "head.bmp"
+snake_body  BITMAP      "body.bmp"
+snake_tail  BITMAP      "tail.bmp"
