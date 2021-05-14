@@ -20,6 +20,7 @@ back_ground equ 100
 snake_head equ 101
 snake_head_mask equ 102
 snake_body equ 103
+snake_body_mask equ 104
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -33,7 +34,7 @@ window_y_len equ 17
 cell_size equ 40
 buffer_size equ 40
 
-public h_dc_buffer, h_dc_snake_head_mask, h_dc_snake_body, h_dc_snake_head, speed
+public h_dc_buffer, h_dc_snake_head_mask, h_dc_snake_body, h_dc_snake_head,h_dc_snake_body_mask, speed
 
 printf PROTO C :dword, :vararg
 _draw_head PROTO, :dword, :dword, :dword, :dword, :dword
@@ -73,6 +74,7 @@ h_dc_background dword ?
 h_dc_background_size dword ?
 h_dc_snake_head dword ?
 h_dc_snake_body dword ?
+h_dc_snake_body_mask dword ?
 h_dc_snake_head_mask dword ?
 
 h_dc_buffer dword buffer_size dup (?)
@@ -87,7 +89,7 @@ state  dword window_x_len*window_y_len dup (?)
 
 _create_background PROC
     local h_dc, h_bmp_background, @cnt
-    local h_bmp_snake_head,h_bmp_snake_head_mask,h_bmp_snake_body
+    local h_bmp_snake_head,h_bmp_snake_head_mask,h_bmp_snake_body,h_bmp_snake_body_mask
     
     invoke GetDC, h_window_main
     mov h_dc, eax
@@ -119,6 +121,8 @@ _create_background PROC
 	mov	h_dc_snake_head_mask, eax
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_snake_body, eax
+    invoke	CreateCompatibleDC, h_dc
+	mov	h_dc_snake_body_mask, eax
 
     invoke ReleaseDC,h_window_main,h_dc 
 
@@ -130,10 +134,13 @@ _create_background PROC
     mov h_bmp_snake_head_mask, eax
     invoke LoadBitmap,h_instance, snake_body
     mov h_bmp_snake_body, eax
+    invoke LoadBitmap,h_instance, snake_body_mask
+    mov h_bmp_snake_body_mask, eax
 
     invoke	SelectObject,h_dc_snake_head, h_bmp_snake_head
     invoke SelectObject,h_dc_snake_head_mask, h_bmp_snake_head_mask
     invoke SelectObject,h_dc_snake_body, h_bmp_snake_body
+    invoke SelectObject,h_dc_snake_body_mask, h_bmp_snake_body_mask
 
     invoke	CreatePatternBrush,h_bmp_background
     push	eax
@@ -146,11 +153,15 @@ _create_background PROC
     invoke	DeleteObject,h_bmp_snake_head
     invoke	DeleteObject,h_bmp_snake_head_mask
     invoke	DeleteObject,h_bmp_snake_body
+    invoke	DeleteObject,h_bmp_snake_body_mask
 
     mov eax, player1_x
     imul eax, window_x_len
     add eax, player1_y
     mov mp1[4*eax], 1
+    mov state[4*eax], 2
+    dec eax
+    mov mp1[4*eax], 2
     mov state[4*eax], 2
     dec eax
     mov mp1[4*eax], 2
@@ -203,14 +214,12 @@ _create_buffer PROC
 
             mov @index, 0
             .while @index < window_x_len*window_y_len
-                push eax
                 xor edx,edx
                 mov eax, @index
                 mov ecx, window_x_len
                 div ecx
                 mov esi, eax
                 mov edi, edx
-                pop eax
                 mov edx, @index
                 mov ecx, mp1[4*edx]
                 .if ecx == 1

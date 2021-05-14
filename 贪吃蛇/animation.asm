@@ -19,7 +19,7 @@ cell_size equ 40
 
 public _draw_head, _draw_body
 
-extern h_dc_buffer:dword, h_dc_snake_head_mask:dword, h_dc_snake_body:dword, h_dc_snake_head:dword, speed:dword
+extern h_dc_buffer:dword, h_dc_snake_head_mask:dword, h_dc_snake_body:dword, h_dc_snake_head:dword, speed:dword,h_dc_snake_body_mask:dword
 
 .code
 
@@ -75,7 +75,7 @@ _draw_body PROC player:dword, index_x:dword, index_y:dword, dir:dword, frame_tim
     .endif
 
     mov esi, frame_time
-    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_head_mask,0,0,136,136,SRCAND
+    invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_body_mask,0,0,136,136,SRCAND
     mov esi, frame_time
     invoke	StretchBlt,h_dc_buffer[4*esi],@player_y,@player_x,cell_size, cell_size,h_dc_snake_body,0,0,136,136,SRCPAINT
     ret
