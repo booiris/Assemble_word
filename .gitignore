@@ -1,6 +1,5 @@
 *.exe
 build/
-.vscode
 *.obj
 大数乘法/aaaa.cpp
 *.cpp
