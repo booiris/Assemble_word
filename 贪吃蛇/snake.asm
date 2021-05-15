@@ -37,24 +37,11 @@ buffer_size equ 50
 
 public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask
 
-printf PROTO C :dword, :vararg
-_draw_head PROTO, :dword, :dword, :dword, :dword, :dword
-_draw_body PROTO, :dword, :dword, :dword, :dword, :dword
-_draw_tail PROTO, :dword, :dword, :dword, :dword, :dword
-_draw_apple PROTO, :dword, :dword, :dword
-_draw_map PROTO, :dword                        ;player1的方向
-_build_map PROTO
-
-extern draw_list:dword,draw_list_size:dword
-
 .data
 
-player1_x dword 0
-player1_y dword 10
 speed dword 1
-player1_x_dir dword 1
-player1_y_dir dword 0
-fps dword 5
+player1_dir dword 2
+fps dword 4
 now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1
@@ -99,8 +86,13 @@ draw_struct STRUCT
 draw_struct ENDS
 
 
-
 .code
+
+printf PROTO C :dword, :vararg
+_draw_item PROTO, :draw_struct,:dword
+_draw_map PROTO, :dword                        ;player1的方向
+_build_map PROTO
+extern draw_list:draw_struct,draw_list_size:dword
 
 _create_background PROC
     local h_dc, h_bmp_background, @cnt
@@ -208,50 +200,51 @@ _draw_window PROC
     inc buffer_index
     .if buffer_index == buffer_size
         mov buffer_index, 0
-        ret
     .endif
-
     invoke timeSetEvent,fps,1,_draw_window,NULL,TIME_ONESHOT
 
     ret
 _draw_window ENDP
 
 _create_buffer PROC 
-    local @cnt,@index
+    local @cnt
 
-    .while create_buffer == 1
+    main_loop:
+        cmp create_buffer, 0
+        jz main_loop_end
         .while buffer_cnt != 0
         .endw
+        invoke printf, offset out_format_int, buffer_cnt
+        invoke _draw_map, player1_dir  ;TODO 调用修改
 
         mov @cnt, 0
         .while @cnt < buffer_size
+
             mov esi, @cnt
             invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,700,h_dc_background,0,0,SRCCOPY
-
-            invoke _draw_map, 2  ;TODO 调用修改
-
-            assume esi:ptr draw_struct
-            mov esi, offset draw_list
-
-            mov ecx, 3
+            mov ecx, 4
             draw_loop:
                 push ecx
-                mov edi, 0
-                .while edi != draw_list_size
-                    .if [esi].prio == ecx
+                mov edi, ecx
+                mov ecx, draw_list_size
+                draw_list_loop:
+                    push ecx
+                    dec ecx
+                    imul ecx, 20
+                    .if draw_list[ecx].prio == edi
+                        invoke _draw_item, draw_list[ecx], @cnt
                     .endif
-                .endw
+                    pop ecx
+                    loop draw_list_loop
                 pop ecx
                 loop draw_loop
-
-            assume esi:nothing
-
             inc buffer_cnt
             inc @cnt
         .endw
-
-    .endw
-    ret
+        jmp main_loop
+    
+    main_loop_end:
+        ret
 _create_buffer ENDP
 
 _init PROC
@@ -262,18 +255,14 @@ _init PROC
 _init ENDP
 
 _check_operation PROC 
-    .if eax == key_w && player1_y_dir != 1
-        mov player1_x_dir, 0
-        mov player1_y_dir, -1
-    .elseif eax == key_s && player1_y_dir != -1
-        mov player1_x_dir, 0
-        mov player1_y_dir, 1
-    .elseif eax == key_a && player1_x_dir != 1
-        mov player1_x_dir, -1
-        mov player1_y_dir, 0
-    .elseif eax == key_d && player1_x_dir != -1
-        mov player1_x_dir, 1
-        mov player1_y_dir, 0
+    .if eax == key_w && player1_dir != 3
+        mov player1_dir, 1
+    .elseif eax == key_s &&  player1_dir != 1
+        mov player1_dir, 3
+    .elseif eax == key_a &&  player1_dir != 2
+        mov player1_dir, 4
+    .elseif eax == key_d &&  player1_dir != 4
+        mov player1_dir, 2
     
     .endif
     ret

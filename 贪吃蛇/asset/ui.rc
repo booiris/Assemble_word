@@ -8,6 +8,7 @@
 #define snake_tail      103
 #define apple           104
 #define apple_mask      105
+#define wall            106
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
 back_ground BITMAP      "temp_ground.bmp"
