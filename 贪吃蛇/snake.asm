@@ -41,6 +41,7 @@ public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_
 
 speed dword 1
 player1_dir dword 2
+player1_now_dir dword 2
 fps dword 4
 now_window_state dword 1
 buffer_cnt dword 0
@@ -214,8 +215,10 @@ _create_buffer PROC
         jz main_loop_end
         .while buffer_cnt != 0
         .endw
-        invoke printf, offset out_format_int, buffer_cnt
-        invoke _draw_map, player1_dir  ;TODO µ÷ÓÃÐÞ¸Ä
+
+        invoke _draw_map, player1_dir
+        mov eax, player1_dir 
+        mov player1_now_dir, eax
 
         mov @cnt, 0
         .while @cnt < buffer_size
@@ -255,13 +258,13 @@ _init PROC
 _init ENDP
 
 _check_operation PROC 
-    .if eax == key_w && player1_dir != 3
+    .if eax == key_w && player1_now_dir != 3
         mov player1_dir, 1
-    .elseif eax == key_s &&  player1_dir != 1
+    .elseif eax == key_s &&  player1_now_dir != 1
         mov player1_dir, 3
-    .elseif eax == key_a &&  player1_dir != 2
+    .elseif eax == key_a &&  player1_now_dir != 2
         mov player1_dir, 4
-    .elseif eax == key_d &&  player1_dir != 4
+    .elseif eax == key_d &&  player1_now_dir != 4
         mov player1_dir, 2
     
     .endif

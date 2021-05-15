@@ -104,10 +104,12 @@ _draw_map PROC player1_dir:dword
 
     mov draw_list_size, 0
 
+    mov eax, player1_dir
+    mov player1_list[0].dir, eax
     invoke _get_nxt_pos, player1_list[0].pos,player1_dir
 
     .if map[4*eax] == apple
-        
+        mov ecx, 0
         .while ecx != player1_size
             push ecx
             imul ecx,12
@@ -185,9 +187,6 @@ _draw_map PROC player1_dir:dword
             inc ecx
         .endw
     .endif
-
-    mov eax, player1_dir
-    mov player1_list[0].dir, eax
 
     mov @index,0 
     .while @index < window_x_len*window_y_len
