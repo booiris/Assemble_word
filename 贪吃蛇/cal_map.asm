@@ -34,15 +34,15 @@ out_format_int byte '%d', 20h,0
 
 .data?
 
-draw_struct STRUCT
+draw_struct STRUCT ;绘制的消息
     x dword ?
     y dword ?
-    prio dword ?
-    item dword ?
-    state dword ?
+    prio dword ?    ;绘制的优先级，蛇头比蛇身和蛇尾优先级高，蛇身比蛇尾优先级高，优先级 1,2,3,4，1最大
+    item dword ?    ;绘制的物体
+    state dword ?   ;绘制物体的状态，现在只有方向状态，但等以后可能加入死亡动画等等，会加入蛇的正在死亡状态等等
 draw_struct ENDS
 
-point_struct STRUCT
+point_struct STRUCT ;原来只是队列存位置不够，加了方向和部位
     pos dword ?
     dir dword ?
     part dword ?
@@ -55,8 +55,15 @@ player1_list point_struct 500 dup ({})
 player1_size dword ?
 
 .code
+ ; 现在的绘图原理是这样的：
+ ; 后端运算完后，将每一个物体塞入一个队列，前端从队列中取出物体绘制
+ ;比如蛇头位于 x,y,方向是向左,就把x,y,物体蛇头标志，方向信息塞入队列，前端就可以根据这些信息绘制图像
 
+ ; 窗口调用 _draw_map 函数，在 _draw_map 函数中，根据蛇的移动变化调用 _create_draw_item函数将物体信息塞入队列
+
+; create_draw_item 创建消息，输入值为物体的位置，优先级，绘制的物体和状态
 _create_draw_item PROC uses eax edx ecx,pos:dword,prio:dword,item:dword,state:dword
+   
     local x,y
     xor edx,edx
     mov eax, pos
@@ -109,6 +116,7 @@ _draw_map PROC player1_dir:dword
     invoke _get_nxt_pos, player1_list[0].pos,player1_dir
 
     .if map[4*eax] == apple
+        ; 蛇头会碰到苹果
         mov ecx, 0
         .while ecx != player1_size
             push ecx
@@ -190,6 +198,7 @@ _draw_map PROC player1_dir:dword
     .endif
 
     mov @index,0 
+    ; 绘制场景中的墙，苹果等
     .while @index < window_x_len*window_y_len
         mov eax, @index 
         mov ecx, map[4*eax]
@@ -206,6 +215,8 @@ _draw_map ENDP
     
 
 _build_map PROC uses esi
+    ; 初始化地图
+
     mov eax, 5*window_x_len+10
     mov ecx, player1_size
     imul ecx, 12
