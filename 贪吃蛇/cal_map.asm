@@ -151,7 +151,8 @@ _draw_map PROC player1_dir:dword
         mov player1_list[ecx].pos, eax
         mov player1_list[ecx].part, snake_tail
         inc player1_size
-        invoke _create_draw_item, player1_list[ecx].pos, 4, snake_head, father_dir
+        add father_dir, 4
+        invoke _create_draw_item, father_pos, 4, snake_tail, father_dir
         mov eax, father_pos
         mov map[4*edx], snake_tail
 

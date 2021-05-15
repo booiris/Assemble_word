@@ -130,6 +130,14 @@ _draw_tail PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, 
         mov @bmp_x, 300
         neg ecx
         add @player_y, ecx
+    .elseif dir == 5
+        mov @bmp_x, 0
+    .elseif dir == 6
+        mov @bmp_x, 100
+    .elseif dir == 7
+        mov @bmp_x, 200
+    .elseif dir == 8
+        mov @bmp_x, 300
     .endif
 
     mov esi, frame_time
