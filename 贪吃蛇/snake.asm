@@ -33,7 +33,7 @@ key_right equ 27h
 window_x_len equ 24
 window_y_len equ 14
 cell_size equ 50
-buffer_size equ 50
+buffer_size equ 250
 
 public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask
 
@@ -187,7 +187,7 @@ _create_background PROC
     mov state[4*eax], 2
     dec eax
     mov mp1[4*eax], 3
-    mov state[4*eax], 2
+    mov state[4*eax], 0
 
     dec eax
     mov mp1[4*eax], 8

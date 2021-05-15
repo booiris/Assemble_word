@@ -90,7 +90,7 @@ _draw_body PROC player:dword, index_x:dword, index_y:dword, dir:dword, frame_tim
 _draw_body ENDP
 
 _draw_tail PROC player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
-    local @player_x,@player_y, @dis, @tail_size
+    local @player_x,@player_y, @dis, @tail_size, @bmp_x
     mov @tail_size, cell_size
     mov ecx, index_x
     imul ecx, cell_size
@@ -101,19 +101,23 @@ _draw_tail PROC player:dword, index_x:dword, index_y:dword, dir:dword, frame_tim
     mov ecx, speed
     imul ecx, frame_time
     .if dir == 1
+        mov @bmp_x, 0
         neg ecx
         add @player_x, ecx
     .elseif dir == 2
+        mov @bmp_x, 100
         add @player_y, ecx
     .elseif dir == 3
+        mov @bmp_x, 200
         add @player_x, ecx
     .elseif dir == 4
+        mov @bmp_x, 300
         neg ecx
         add @player_y, ecx
     .endif
 
     mov esi, frame_time
-    invoke StretchBlt,h_dc_bmp,0,0,@tail_size, @tail_size,h_dc_snake_tail,0,0,136,136,SRCCOPY
+    invoke StretchBlt,h_dc_bmp,0,0,@tail_size, @tail_size,h_dc_snake_tail,@bmp_x,0,100,100,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@tail_size, @tail_size,h_dc_bmp,0,0,@tail_size,@tail_size,eax
     ret
@@ -136,11 +140,11 @@ _draw_apple PROC index_x:dword, index_y:dword, frame_time:dword
     mov eax, edx
 
     xor edx,edx
-    mov ecx, 18
+    mov ecx, 10
     div ecx
     
     .if eax > 3
-        mov ecx, 4
+        mov ecx, 6
         sub ecx, eax
         mov eax, ecx
     .endif
@@ -154,8 +158,8 @@ _draw_apple PROC index_x:dword, index_y:dword, frame_time:dword
     invoke printf, offset out_format_int, @apple_size
 
     mov esi, frame_time
-    invoke StretchBlt,h_dc_buffer[4*esi],@apple_y,@apple_x,@apple_size, @apple_size,h_dc_apple_mask,0,0,200,200,SRCAND
-    invoke StretchBlt,h_dc_buffer[4*esi],@apple_y,@apple_x,@apple_size, @apple_size,h_dc_apple,0,0,200,200,SRCPAINT
+    invoke StretchBlt,h_dc_buffer[4*esi],@apple_y,@apple_x,@apple_size, @apple_size,h_dc_apple_mask,0,0,64,64,SRCAND
+    invoke StretchBlt,h_dc_buffer[4*esi],@apple_y,@apple_x,@apple_size, @apple_size,h_dc_apple,0,0,64,64,SRCPAINT
     ret
 _draw_apple ENDP
 
