@@ -33,7 +33,7 @@ key_right equ 27h
 window_x_len equ 24
 window_y_len equ 14
 cell_size equ 50
-buffer_size equ 250
+buffer_size equ 50
 
 public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask
 
@@ -42,6 +42,10 @@ _draw_head PROTO, :dword, :dword, :dword, :dword, :dword
 _draw_body PROTO, :dword, :dword, :dword, :dword, :dword
 _draw_tail PROTO, :dword, :dword, :dword, :dword, :dword
 _draw_apple PROTO, :dword, :dword, :dword
+_draw_map PROTO, :dword                        ;player1的方向
+_build_map PROTO
+
+extern draw_list:dword,draw_list_size:dword
 
 .data
 
@@ -86,10 +90,15 @@ h_dc_bmp_size dword ?
 h_dc_buffer dword buffer_size dup (?)
 h_dc_buffer_size dword buffer_size dup(?)
 
-mp1 dword window_x_len*window_y_len dup (?)
-mp2 dword window_x_len*window_y_len dup (?)
+draw_struct STRUCT
+    x dword ?
+    y dword ?
+    prio dword ?
+    item dword ?
+    state dword ?
+draw_struct ENDS
 
-state  dword window_x_len*window_y_len dup (?)
+
 
 .code
 
@@ -174,26 +183,8 @@ _create_background PROC
     invoke SelectObject,h_dc_apple_mask, h_bmp
     invoke	DeleteObject,h_bmp
 
-    mov eax, player1_x
-    imul eax, window_x_len
-    add eax, player1_y
-    mov mp1[4*eax], 1
-    mov state[4*eax], 2
-    dec eax
-    mov mp1[4*eax], 2
-    mov state[4*eax], 2
-    dec eax
-    mov mp1[4*eax], 2
-    mov state[4*eax], 2
-    dec eax
-    mov mp1[4*eax], 3
-    mov state[4*eax], 0
-
-    dec eax
-    mov mp1[4*eax], 8
-    mov state[4*eax], 2
-
     invoke ReleaseDC,h_window_main,h_dc 
+    invoke _build_map
     ret 
 _create_background ENDP
 
@@ -237,39 +228,23 @@ _create_buffer PROC
             mov esi, @cnt
             invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,700,h_dc_background,0,0,SRCCOPY
 
-            ; 调用行为运算函数，原来地图，更新地图，状态图
+            invoke _draw_map, 2  ;TODO 调用修改
 
-            mov @index, 0
-            .while @index < window_x_len*window_y_len
-                xor edx,edx
-                mov eax, @index
-                mov ecx, window_x_len
-                div ecx
-                mov esi, eax
-                mov edi, edx
-                mov edx, @index
-                mov ecx, mp1[4*edx]
-                .if ecx == 1
-                    invoke _draw_head, 1, esi, edi,state[4*edx],@cnt ;画1号蛇头
-                .elseif ecx == 2
-                    invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画1号蛇身
-                .elseif ecx == 3
-                    invoke _draw_tail, 1, esi, edi,state[4*edx],@cnt ;画1号蛇尾
-                .elseif ecx == 4
-                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画2号蛇头
-                .elseif ecx == 5
-                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画2号蛇身
-                .elseif ecx == 6
-                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画2号蛇尾
-                .elseif ecx == 7
-                    ; invoke _draw_body, 1, esi, edi,state[4*edx],@cnt ;画墙
-                .elseif ecx == 8
-                    invoke _draw_apple, esi, edi,@cnt ;画苹果
-                .endif 
-                inc @index
-            .endw
+            assume esi:ptr draw_struct
+            mov esi, offset draw_list
 
-            ; 更新地图
+            mov ecx, 3
+            draw_loop:
+                push ecx
+                mov edi, 0
+                .while edi != draw_list_size
+                    .if [esi].prio == ecx
+                    .endif
+                .endw
+                pop ecx
+                loop draw_loop
+
+            assume esi:nothing
 
             inc buffer_cnt
             inc @cnt
