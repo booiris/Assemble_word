@@ -9,11 +9,13 @@
 #define apple           104
 #define apple_mask      105
 #define wall            106
+#define grass           107
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
-back_ground BITMAP      "temp_ground.bmp"
+back_ground BITMAP      "back.bmp"
 snake_head  BITMAP      "head.bmp"
 snake_body  BITMAP      "body.bmp"
 snake_tail  BITMAP      "tail.bmp"
 apple       BITMAP      "apple.bmp"
 apple_mask  BITMAP      "apple_mask.bmp"
+grass       BITMAP      "grass.bmp"

@@ -22,6 +22,8 @@ snake_body equ 102
 snake_tail equ 103
 apple      equ 104
 apple_mask equ 105
+wall       equ 106
+grass      equ 107
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -35,7 +37,7 @@ window_y_len equ 14
 cell_size equ 50
 buffer_size equ 50
 
-public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask
+public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass
 
 .data
 
@@ -66,12 +68,13 @@ h_window_player1 dword ?
 h_window_player2 dword ?
 h_window_status dword ?
 h_dc_background dword ?
-h_dc_background_size dword ?
 h_dc_snake_head dword ?
 h_dc_snake_body dword ?
 h_dc_snake_tail dword ?
 h_dc_apple dword ?
 h_dc_apple_mask dword ?
+h_dc_wall dword ?
+h_dc_grass dword ?
 h_dc_bmp dword ?
 h_dc_bmp_size dword ?
 
@@ -103,10 +106,6 @@ _create_background PROC
     mov h_dc, eax
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_background, eax
-    invoke CreateCompatibleBitmap, h_dc, 1200, 700
-    mov h_dc_background_size, eax
-
-    invoke	SelectObject,h_dc_background,h_dc_background_size 
 
     mov @cnt, 0
     mov esi, offset h_dc_buffer
@@ -139,12 +138,7 @@ _create_background PROC
 
     invoke	LoadBitmap,h_instance, back_ground
 	mov	h_bmp,eax
-    invoke	CreatePatternBrush,h_bmp
-    push	eax
-    invoke	SelectObject,h_dc_background,eax
-    invoke	PatBlt,h_dc_background,0,0,1200, 700,PATCOPY
-    pop	eax
-    invoke	DeleteObject,eax    
+    invoke SelectObject,h_dc_background, h_bmp 
     invoke	DeleteObject,h_bmp
 
     invoke	LoadBitmap,h_instance,snake_head
@@ -174,6 +168,13 @@ _create_background PROC
     invoke LoadBitmap,h_instance, apple_mask
     mov h_bmp, eax
     invoke SelectObject,h_dc_apple_mask, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_grass, eax
+    invoke LoadBitmap,h_instance, grass
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_grass, h_bmp
     invoke	DeleteObject,h_bmp
 
     invoke ReleaseDC,h_window_main,h_dc 
@@ -289,7 +290,6 @@ _close PROC
     invoke DeleteDC, h_dc_snake_body
     invoke DeleteDC, h_dc_snake_tail
     invoke DeleteDC, h_dc_bmp
-    invoke DeleteObject, h_dc_background_size
     invoke DeleteObject, h_dc_bmp_size
     ret
 _close ENDP

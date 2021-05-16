@@ -20,6 +20,7 @@ snake_body equ 102
 snake_tail equ 103
 apple      equ 104
 wall       equ 106
+grass      equ 107
 window_x_len equ 24
 window_y_len equ 14
 
@@ -28,6 +29,7 @@ public draw_list,draw_list_size,_build_map,_draw_map
 
 .data 
 map dword window_x_len*window_y_len dup (0)
+const_map dword window_x_len*window_y_len dup (0)
 
 .const
 out_format_int byte '%d', 20h,0
@@ -210,6 +212,16 @@ _draw_map PROC player1_dir:dword
         inc @index
     .endw
 
+    mov @index, 0
+    .while @index < window_x_len*window_y_len
+        mov eax, @index 
+        mov ecx, const_map[4*eax]
+        .if ecx == grass
+             invoke _create_draw_item, @index,1,grass,0
+        .endif
+        inc @index
+    .endw
+
     ret
 _draw_map ENDP
     
@@ -245,6 +257,26 @@ _build_map PROC uses esi
 
     dec eax
     mov map[4*eax], apple
+
+    mov eax, 9*window_x_len+10
+    mov map[4*eax], apple
+
+    mov eax, 9*window_x_len+10
+    mov const_map[4*eax], grass
+    mov eax, 9*window_x_len+11
+    mov const_map[4*eax], grass
+    mov eax, 9*window_x_len+12
+    mov const_map[4*eax], grass
+    mov eax, 9*window_x_len+13
+    mov const_map[4*eax], grass
+    mov eax, 10*window_x_len+10
+    mov const_map[4*eax], grass
+    mov eax, 10*window_x_len+11
+    mov const_map[4*eax], grass
+    mov eax, 10*window_x_len+12
+    mov const_map[4*eax], grass
+    mov eax, 10*window_x_len+13
+    mov const_map[4*eax], grass
 
     ret
 _build_map ENDP
