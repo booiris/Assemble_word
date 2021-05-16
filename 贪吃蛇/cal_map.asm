@@ -21,6 +21,7 @@ snake_tail equ 103
 apple      equ 104
 wall       equ 106
 grass      equ 107
+emoji      equ 108
 window_x_len equ 24
 window_y_len equ 14
 
@@ -124,6 +125,7 @@ _draw_map PROC player1_dir:dword
             push ecx
             imul ecx,12
             .if player1_list[ecx].part == snake_head 
+                invoke _create_draw_item, player1_list[ecx].pos, 1, emoji, 0
                 mov eax, 2
             .elseif player1_list[ecx].part == snake_body 
                 mov eax, 3
@@ -259,6 +261,12 @@ _build_map PROC uses esi
     mov map[4*eax], apple
 
     mov eax, 9*window_x_len+10
+    mov map[4*eax], apple
+    mov eax, 1*window_x_len+12
+    mov map[4*eax], apple
+    mov eax, 3*window_x_len+15
+    mov map[4*eax], apple
+    mov eax, 7*window_x_len+18
     mov map[4*eax], apple
 
     mov eax, 9*window_x_len+10

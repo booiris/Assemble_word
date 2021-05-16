@@ -24,6 +24,8 @@ apple      equ 104
 apple_mask equ 105
 wall       equ 106
 grass      equ 107
+emoji      equ 108
+emoji_mask equ 109
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -37,7 +39,7 @@ window_y_len equ 14
 cell_size equ 50
 buffer_size equ 50
 
-public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass
+public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji
 
 .data
 
@@ -75,6 +77,7 @@ h_dc_apple dword ?
 h_dc_apple_mask dword ?
 h_dc_wall dword ?
 h_dc_grass dword ?
+h_dc_emoji dword ?
 h_dc_bmp dword ?
 h_dc_bmp_size dword ?
 
@@ -175,6 +178,13 @@ _create_background PROC
     invoke LoadBitmap,h_instance, grass
     mov h_bmp, eax
     invoke SelectObject,h_dc_grass, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_emoji, eax
+    invoke LoadBitmap,h_instance, emoji
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_emoji, h_bmp
     invoke	DeleteObject,h_bmp
 
     invoke ReleaseDC,h_window_main,h_dc 

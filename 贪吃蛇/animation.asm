@@ -23,6 +23,7 @@ snake_tail equ 103
 apple      equ 104
 wall       equ 106
 grass      equ 107
+emoji      equ 108
 window_x_len equ 24
 window_y_len equ 14
 cell_size equ 50
@@ -30,7 +31,7 @@ cell_size equ 50
 printf PROTO C :dword, :vararg
 public _draw_item
 
-extern h_dc_buffer:dword,h_dc_snake_body:dword, h_dc_snake_head:dword, speed:dword,h_dc_bmp:dword,h_dc_snake_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword
+extern h_dc_buffer:dword,h_dc_snake_body:dword, h_dc_snake_head:dword, speed:dword,h_dc_bmp:dword,h_dc_snake_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword
 
 .data?
 draw_struct STRUCT
@@ -40,6 +41,15 @@ draw_struct STRUCT
     item dword ?
     state dword ?
 draw_struct ENDS
+
+player_struct STRUCT 
+    snake_head_x dword ?
+    snake_head_y dword ?
+    emoji_cnt   dword ?
+    emoji_kind  dword ?       
+player_struct ENDS
+
+player1 player_struct {}
 
 .const 
 out_format_int byte '%d', 20h,0
@@ -68,6 +78,11 @@ _draw_head PROC uses esi, player:dword, index_x:dword, index_y:dword, dir:dword,
         neg ecx
         add @player_y, ecx
     .endif
+
+    mov ecx, @player_x
+    mov player1.snake_head_x, ecx
+    mov ecx, @player_y
+    mov player1.snake_head_y, ecx
 
     mov esi, frame_time
     invoke StretchBlt,h_dc_bmp,0,0,@head_size, @head_size,h_dc_snake_head,0,0,136,136,SRCCOPY
@@ -188,13 +203,10 @@ _draw_wall PROC uses esi, index_x:dword, index_y:dword, frame_time:dword
     ret
 _draw_wall ENDP
 
-_draw_emoji PROC uses esi,index_x:dword, index_y:dword, frame_time:dword 
-    ret
-_draw_emoji ENDP
-
 _draw_grass PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     local @grass_size,@grass_x,@grass_y
     mov @grass_size, cell_size
+    add @grass_size,5
     mov eax, index_x
     imul eax, cell_size
     mov @grass_x, eax
@@ -207,6 +219,33 @@ _draw_grass PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     invoke TransparentBlt,h_dc_buffer[4*esi],@grass_y,@grass_x,@grass_size, @grass_size,h_dc_bmp,0,0,@grass_size,@grass_size,eax
     ret
 _draw_grass ENDP
+
+_draw_emoji PROC uses esi,state:dword,frame_time:dword
+    local @emoji_size,@emoji_x,@emoji_y,@emoji
+    mov @emoji_size, cell_size
+    mov eax, player1.snake_head_x
+    sub eax, cell_size/4*3
+    mov @emoji_x, eax
+    
+    mov eax, player1.snake_head_y
+    add eax, cell_size/4
+    mov @emoji_y, eax
+    mov esi, frame_time
+
+    .if state == 0
+        mov eax, 0
+    .elseif state == 1
+        mov eax, 100
+    .elseif state == 2
+        mov eax, 200
+    .endif
+
+    invoke StretchBlt,h_dc_bmp,0,0,@emoji_size, @emoji_size,h_dc_emoji,eax,0,100,100,SRCCOPY
+    mov eax, 0ffffffh
+    invoke TransparentBlt,h_dc_buffer[4*esi],@emoji_y,@emoji_x,@emoji_size, @emoji_size,h_dc_bmp,0,0,@emoji_size,@emoji_size,eax
+
+    ret
+_draw_emoji ENDP
 
 _draw_item PROC item:draw_struct,frame_time:dword
     ; invoke printf, offset out_format_int, item.item
@@ -222,6 +261,14 @@ _draw_item PROC item:draw_struct,frame_time:dword
         invoke _draw_wall,item.x,item.y,frame_time 
     .elseif item.item == grass 
         invoke _draw_grass,item.x,item.y,frame_time
+    .elseif item.item == emoji
+        mov player1.emoji_cnt, 500
+        mov eax ,item.state
+        mov player1.emoji_kind, eax
+    .endif
+    .if player1.emoji_cnt != 0
+        dec player1.emoji_cnt
+        invoke _draw_emoji,player1.emoji_kind,frame_time
     .endif
     ret
 _draw_item ENDP

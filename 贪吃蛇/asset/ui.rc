@@ -10,6 +10,8 @@
 #define apple_mask      105
 #define wall            106
 #define grass           107
+#define emoji           108
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
 back_ground BITMAP      "back.bmp"
@@ -19,3 +21,4 @@ snake_tail  BITMAP      "tail.bmp"
 apple       BITMAP      "apple.bmp"
 apple_mask  BITMAP      "apple_mask.bmp"
 grass       BITMAP      "grass.bmp"
+emoji       BITMAP      "emoji.bmp"
