@@ -32,17 +32,17 @@ cp STRUCT
 cp ENDS
 
 n1 dword ?
-num1_str byte 10000 dup(?)
+num1_str byte 4105 dup(?)
 n2 dword ?
-num2_str byte 10000 dup(?)
+num2_str byte 4105 dup(?)
 
 tttt byte ?
 
-num1 cp 10000 dup({})
-num2 cp 10000 dup({})
-temp_num cp 10000 dup({})
+num1 cp 8200 dup({})
+num2 cp 8200 dup({})
+temp_num cp 8200 dup({})
 
-ans dword 100005 dup(?)
+ans dword 8200 dup(?)
 ans_len dword ?
 
 .code

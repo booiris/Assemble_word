@@ -14,9 +14,9 @@
         // g++ $fileName -o build/$fileNameWithoutExt && .\\build\\$fileNameWithoutExt
     },
     "code-runner.executorMapByFileExtension": {
-        // ".asm": "ml /c /coff /Fo build/$fileNameWithoutExt $fileName && link /SUBSYSTEM:console build/$fileNameWithoutExt.obj && $fileNameWithoutExt",
+        ".asm": "ml /c /coff /Fo build/$fileNameWithoutExt $fileName && link /SUBSYSTEM:console build/$fileNameWithoutExt.obj && $fileNameWithoutExt",
 
-        ".asm": "ml /c /coff /Fo build/ *.asm 2>nul && rc /fo build/ui.res asset/ui.rc && link /SUBSYSTEM:console /out:snake.exe build/*.obj build/*.res && snake && echo $fileNameWithoutExt",
+        // ".asm": "ml /c /coff /Fo build/ *.asm 2>nul && rc /fo build/ui.res asset/ui.rc && link /SUBSYSTEM:console /out:snake.exe build/*.obj build/*.res && snake && echo $fileNameWithoutExt",
     },
     "code-runner.showExecutionMessage": false, 
     // 在运行代码之前保存文件
