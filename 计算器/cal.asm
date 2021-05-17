@@ -546,7 +546,7 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
     .elseif eax == WM_COMMAND
         mov eax, wParam
         mov ecx, wParam
-        shl eax, 16
+        shr eax, 16
 
         .if ax == BN_CLICKED
             call _check_btn

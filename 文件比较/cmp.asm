@@ -84,10 +84,6 @@ _load_file PROC uses esi edi
     .if	eax
         invoke	CreateFile,addr str_file_name,GENERIC_READ or GENERIC_WRITE,\
 				FILE_SHARE_READ or FILE_SHARE_WRITE,0,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0
-        .if	eax ==	INVALID_HANDLE_VALUE
-            invoke	MessageBox,h_main_window,addr str_err_openfile,NULL,MB_OK or MB_ICONSTOP
-            ret
-        .endif
         push eax
         .if	h_file
             invoke CloseHandle,h_file
@@ -211,10 +207,20 @@ _init PROC
 				750,605,200,30,\
 				h_main_window,4,h_instance,NULL
 
-    invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_VSCROLL or WS_HSCROLL or ES_MULTILINE, 0, 0, 545, 600, h_main_window, 0, h_instance, NULL
+    invoke CreateWindowEx, WS_EX_CLIENTEDGE, \
+    offset str_edit_class_name, NULL, \
+    WS_CHILD or WS_VISIBLE or WS_VSCROLL or \
+    WS_HSCROLL or ES_MULTILINE, \
+    0, 0, 545, 600, h_main_window, 0, \
+    h_instance, NULL
     mov h_window_edit1, eax
 
-    invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_edit_class_name, NULL, WS_CHILD or WS_VISIBLE or WS_VSCROLL or WS_HSCROLL or ES_MULTILINE, 545, 0, 545, 600, h_main_window, 1, h_instance, NULL
+    invoke CreateWindowEx, WS_EX_CLIENTEDGE,\
+    offset str_edit_class_name, NULL, \
+    WS_CHILD or WS_VISIBLE or WS_VSCROLL or \
+    WS_HSCROLL or ES_MULTILINE, \
+    545, 0, 545, 600, h_main_window, 1, \
+    h_instance, NULL
     mov h_window_edit2, eax
 
     ; invoke SetWindowLong, h_window_edit1, GWL_WNDPROC, addr _proc_edit1
@@ -250,7 +256,7 @@ _proc_main_window PROC uses ebx edi esi h_window,u_msg,wParam,lParam
     .elseif eax == WM_COMMAND
         mov eax, wParam
         mov ecx, wParam
-        shl eax, 16
+        shr eax, 16
         
         .if ax == BN_CLICKED
             .if cx == 5
@@ -305,7 +311,11 @@ _main_window PROC
     mov	st_window_class.lpszClassName,offset str_class_name
     invoke RegisterClassEx, addr st_window_class
 
-    invoke CreateWindowEx, WS_EX_OVERLAPPEDWINDOW, offset str_class_name, offset str_caption_main, WS_OVERLAPPEDWINDOW xor WS_SIZEBOX, 100, 100, 1100, 700, NULL, NULL, h_instance, NULL
+    invoke CreateWindowEx, WS_EX_OVERLAPPEDWINDOW, \
+    offset str_class_name, \
+    offset str_caption_main, \
+    WS_OVERLAPPEDWINDOW xor WS_SIZEBOX, \
+    100, 100, 1100, 700, NULL, NULL, h_instance, NULL
     mov h_main_window, eax
     invoke ShowWindow, h_main_window, SW_SHOWNORMAL
     invoke UpdateWindow, h_main_window
