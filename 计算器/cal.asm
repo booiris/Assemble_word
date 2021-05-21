@@ -484,9 +484,9 @@ _init PROC
 _init ENDP
 
 _back PROC uses esi
-    dec id_len
+    dec id_len  
     cmp id_len, -1
-    jz done
+    jz len_zero
     mov esi, offset id_express
     mov eax, id_len
     mov eax, [esi+4*eax]
@@ -505,6 +505,9 @@ _back PROC uses esi
 
     invoke SendMessage, h_express, EM_SETSEL, -1, -1
     done:
+        ret
+    len_zero:
+        inc id_len
         ret
 _back ENDP
 

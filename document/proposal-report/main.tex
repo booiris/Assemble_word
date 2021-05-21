@@ -30,6 +30,7 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{amsmath}
+\usepackage{subfigure}
 \usepackage[hidelinks]{hyperref}
 \renewcommand{\algorithmicrequire}{\textbf{Input:}}
 \renewcommand{\algorithmicensure}{\textbf{Output:}}
@@ -161,7 +162,6 @@ frame=trbl%
 
 由于 changenum 函数代码过长，所以采用伪代码说明：
 
-% //TODO 伪代码
 \makeatletter
 \def\BState{\State\hskip-\ALG@thistlm}
 \makeatother
@@ -644,27 +644,316 @@ GetOpenFileName 函数将用户选择的文件文件名保存在 str\_file\_name
   .endif
 \end{lstlisting}
 
-按钮编号 1-26 为操作符和数字按钮，27 为回退按钮，28 为清屏按钮，29为计算结果。对于操作符和操作数构成的表达式的保存，我将操作符和操作数映射为不同的id，
+按钮编号 1-26 为操作符和数字按钮，27 为回退按钮，28 为清屏按钮，29为计算结果。对于操作符和操作数构成的表达式的保存，我将操作符和操作数映射为不同的id，在识别到 1-26 id 时，将值插入 id\_express 中,但由于还得把表达式显示在窗口上，所以通过 map 一个映射数组得到操作符和数字的字符串形式，调用 \_input 函数将表达式显示在窗口上。
 
+由于 \_input 函数不是很重要，只简要说说它的运行过程，首先得到了要插入的字符串后，将字符串插入到 str\_express 字符数组的末尾，然后用 SetWindowText 函数将字符数组显示到窗口上。
+
+接下来说明回退功能的实现，也挺简单的，如果 id\_express 长度不为 0 ，取出 id\_express 末尾 id ，然后根据 map 数组 和 id 得到要删除字符串，计算长度， str\_express 对应长度位置置 0 ，调用 SetWindowText 函数刷新窗口即可。
+
+清屏功能直接修改 id\_express 和 str\_express 数组长度就行，然后刷新一下表达式窗口和结果窗口。
+
+接下来说明 \_cal 函数，也是核心部分，中缀表达式转换计算得到结果。
 
 \subsubsection{中缀表达式转换}
 
+在说明主函数之前，首先介绍几个辅助函数。
+
+栈的结构为一个数组，数组下标 0 存放栈的长度，后面存放栈的元素，转换中缀表达式需要符号栈和数值栈。
+
+栈的插入函数：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  _push PROC uses esi, p_stack, item 
+    mov esi, p_stack
+    mov ecx, [esi]
+    inc ecx
+    mov eax, item
+    mov [esi+4*ecx], eax
+    mov [esi], ecx
+    ret
+  _push ENDP
+\end{lstlisting}
+
+输入栈的指针和元素，因为可能向数值栈或者符号栈插入元素。接下来是删除栈顶元素，实际上就是栈长度减一：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  _pop PROC uses esi, p_stack
+    mov esi, p_stack
+    mov eax, [esi]
+    .if eax == 0
+        mov error, 1
+        jmp done
+    .endif
+    dec eax
+    mov [esi], eax
+    done:
+        ret
+  _pop ENDP
+\end{lstlisting}
+
+这里需要做一个错误标记，如果栈的长度为 0，则 error 标记为 1，没有返回值，获取栈顶元素函数如下：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  _top PROC uses esi, p_stack
+    mov esi, p_stack
+    mov eax, [esi]
+    .if eax == 0
+        mov eax, 0
+        jmp done
+    .endif
+    mov eax, [esi+4*eax]
+    done:
+        ret
+  _top ENDP
+\end{lstlisting}
+
+输入栈的指针，返回元素值，如果栈为空，为了继续运算，还是返回 0 值，因为最后两个栈一定为空，所以一定会调用 pop ，会触发错误，不会出现错误没被发现的情况。
+
+由于输入的数字是一个一个位输入的，所以需要将输入的数字字符串转换为浮点数存储，采用 sscanf 函数转换：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  _getnum PROC uses esi
+    LOCAL temp:dword
+    mov esi, offset str_input_num
+    ; temp_out 是 64位数
+    invoke sscanf, esi, offset str_in_float, offset temp_out
+    ;由于sscanf转换为64位，所以得把得到的数转化为32位才能插入栈中
+    fld temp_out
+    fstp temp 
+    invoke _push, offset sta_num, temp
+    ret
+  _getnum ENDP
+\end{lstlisting}
+
+还有就是获取操作符优先级的函数：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  _getpr PROC uses esi, operation
+    mov esi, offset key
+    mov eax, operation
+    mov eax, [esi+4*eax]
+    ret
+  _getpr ENDP
+\end{lstlisting}
+
+接下来介绍中缀表达式转换函数，在计算表达式时，在总体表达式左右分别插入左右括号便于计算。
+
+由于前置正负号的存在，导致转换数字有点复杂，下面介绍识别数字过程：
+
+首先前置正负号左边一定为空(由于开头插入了左括号，所以不会出现空)或者左括号或者操作符。当识别到正负号时，如果上一个为操作符或者左括号，那么这个为前置正负号。
+
+接下来转换小数，当识别到小数点时，设置一个标记，如果识别的数被插入数值栈，标记清楚；如果识别到小数点时标记还存在，说明一个数存在两个小数点，将 error 标记置1。
+
+上面就是数字处理部分，下面给出计算表达式的伪代码：
+
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
+\begin{algorithm}[htb]
+  \caption{计算表达式}
+  \begin{algorithmic}
+    \Procedure{ASM Procedure}{}
+    \State 遍历 id\_express 数组.
+    \If {当前 id 为数字}
+    \State 数字保存过程.
+    \ElsIf {当前 id 为操作符}
+    \State 将保存的数字转换为浮点数保存在数值栈中.
+    \If {识别到为 PI}
+    \State 数值栈插入 PI.
+    \ElsIf {当前 id 为右括号}
+    \State 不断弹出符号计算直到遇到左括号.
+    \State 计算前置正负号.
+    \ElsIf {当前 id 为操作符}
+    \State 不断弹出符号并计算，直到栈顶符号优先级小于等于当前符号.
+    \State 由于表达式左结合，所以优先级相等时得弹出并计算栈顶符号.
+    \State 将当前符号插入符号栈.
+    \EndIf
+    \EndIf
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
+
 \subsubsection{计算结果}
+
+计算结果过程再 \_cal\_op 函数中，首先取出操作符和一个数：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  LOCAL n1:dword, n2:dword
+  invoke _top,offset sta_op
+  mov edx, eax
+  invoke _pop,offset sta_op
+  invoke _top,offset sta_num
+  mov n1, eax
+  invoke _pop,offset sta_num
+\end{lstlisting}
+
+接下来判断操作符是一元还是二元操作数，如果是二元操作数，还得再取一个数，代码如下：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  .if edx >= 19
+    fld n1
+    .if edx == 22   ;sin运算
+        fsin
+    .elseif edx == 23 ;cos运算
+        fcos
+    .elseif edx == 24 ;tan运算，fptan得到tan(x)和1，得弹出1
+        fptan
+        fstp n1
+    .elseif edx == 25 ;atan计算方式为atan(st(1)/st(0))，所以得先插入1
+        fld1
+        fpatan
+    .elseif edx == 26 ; st(1)*log2(st(0)),所以修改一下顺序
+        fstp n1
+        fld1 
+        fld n1
+        fyl2x
+    .elseif edx == 27 ;取反，说明有前置负号
+        fchs
+    .endif
+\end{lstlisting}
+
+接下来是二元运算：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  .elseif edx >= 11 && edx < 19
+    invoke _top,offset sta_num
+    mov n2, eax
+    invoke _pop,offset sta_num
+    ; 由于是 n2 出现在前，所以得换一下顺序
+    fld n2
+    fld n1
+    .if edx == 11  ;加法
+        fadd
+    .elseif edx == 12 ;减法 
+        fsub
+    .elseif edx == 13 ;乘法
+        fmul
+    .elseif edx == 14 ;除法
+        fdiv 
+    .elseif edx == 16 ;取模
+        fstp n1
+        fstp n2
+        fld n1
+        fld n2
+        fprem
+    .endif
+\end{lstlisting}
+
+最后向数值栈中插入结果
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  fstp n1
+  invoke _push,offset sta_num, n1
+\end{lstlisting}
 
 \subsubsection{结果输出}
 
+首先结果出栈：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  invoke _top,offset sta_num
+  mov temp, eax
+  invoke _pop,offset sta_num
+\end{lstlisting}
+
+由于 windows 的 wsprintf 函数不能转换浮点数，所以只能采取折中的方法，将结果乘 1000，再四舍五入得到整数，模1000得到结果的小数部分，代码如下：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  fld temp
+  fmul pow_num
+  ;判断结果是否为负数
+  ftst ;测试是否为负数
+  FSTSW ax  ;取 fpu 状态寄存字，如果为负数，对应标志位为1
+  and ax, 0100h
+  .if ax != 0
+      mov index, -1 ;index为负数标志
+      fchs  ;如果为负数取反
+  .endif
+  ;判断结果是否为负数
+  fistp temp
+  mov eax, temp
+  mov ebx, 1000
+  xor edx, edx
+  div ebx
+  push edx
+  invoke wsprintf,offset str_ans_int,offset str_out_ans,eax
+  pop edx
+  invoke wsprintf,offset str_ans_float,offset str_out_ans,edx
+\end{lstlisting}
+
+接下来就是将得到的整数部分和小数部分组装为字符串，代码如下：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  mov esi, offset str_ans 
+  .if index == -1
+      mov byte ptr [esi], '-'
+      inc esi
+  .endif
+  invoke	lstrcpy, esi, offset str_ans_int
+  invoke lstrlen, offset str_ans_int
+  add esi, eax
+  mov byte ptr [esi], '.'
+  inc esi
+  invoke	lstrcpy, esi, offset str_ans_float
+\end{lstlisting}
+
+接下来进行错误判断，如果计算过程中出现符号栈或者数值栈错误，error标记会置1，说明出错；如果符号栈或者数值栈中还存在元素，说明出错；接下来判断计算过程中的错误：fpu 状态寄存器中，无效操作异常位于 0，除零异常位于2，溢出异常位于3，栈错误位于6，所以得到状态字后和 0x004d进行与运算，如果不为 0，说明出错，代码如下：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  FSTSW ax
+  and ax, 004dh
+  mov esi, offset sta_op
+  mov ecx, [esi]
+  mov esi, offset sta_num
+  mov edx, [esi]
+  .if error == 1 || ax != 0 || ecx != 0 || edx != 0
+      invoke SetWindowText, h_ans, offset str_error
+  .else
+      invoke SetWindowText, h_ans, offset str_ans
+  .endif
+\end{lstlisting}
+
 \subsection{实验结果}
 
-下面这是计算复杂表达式的结果图：
+下面是计算表达式的结果图：
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\linewidth]{img/cal_res.png}
+  \subfigure[前置负号计算]{
+  \includegraphics[width=0.5\linewidth]{img/4.png}
+  }
+  \quad
+  \subfigure[复杂表达式]{
+  \includegraphics[width=0.7\linewidth]{img/cal_res.png}
+  }
   \caption{计算器结果}
 \end{figure}
 
 可以看出，计算器能够得到正确的结果。
 
+下面是错误判断的结果：
+
+\begin{figure}[H]
+  \centering
+  \subfigure[表达式错误]{
+  \includegraphics[width=0.4\linewidth]{img/1.png}
+  }
+  \quad
+  \subfigure[数值溢出]{
+  \includegraphics[width=0.4\linewidth]{img/2.png}
+  }
+  \quad
+  \subfigure[除零异常]{
+  \includegraphics[width=0.4\linewidth]{img/3.png}
+  }\quad
+  \subfigure[小数异常]{
+  \includegraphics[width=0.4\linewidth]{img/5.png}
+  }
+  \caption{错误显示}
+  \end{figure}
+
 \subsection{心得体会}
+
+通过三个实验，我对汇编语言有了一定的了解，能够实现一些功能，有一定的收获。
 
 \end{document}
