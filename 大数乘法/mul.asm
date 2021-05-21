@@ -70,8 +70,6 @@ reverse_input PROC C str_p:dword
         cmp ecx, ebx
         jle loop1_end
         jmp loop1
-
-    invoke printf, offset out_format_num_str,offset num1_str
     loop1_end:
         ret
 
@@ -166,7 +164,7 @@ cp_mul PROC C cp1:cp, cp2:cp
 cp_mul ENDP
 
 fft PROC C num_len:dword, num_p:dword, inv:dword
-    LOCAL mid:dword,temp_cp:cp,max_n:real4,float_inv:real4,t1:cp,t2:cp,aaaa:real8
+    LOCAL mid:dword,temp_cp:cp,max_n:real4,float_inv:real4,t1:cp,t2:cp
     cmp num_len, 1
     je done
     mov esi, num_p
