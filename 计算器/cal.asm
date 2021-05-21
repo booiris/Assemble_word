@@ -230,7 +230,9 @@ _cal PROC
         mov now_w, eax
         add esi, 4
         .if input_num_len == 0 && father != 20 && (eax == 11 || eax == 12)
-            invoke _push, offset sta_op, 27
+            .if eax == 12
+                invoke _push, offset sta_op, 27
+            .endif
         .elseif eax == 15
             .if float_flag == 0
                 mov float_flag, 1
