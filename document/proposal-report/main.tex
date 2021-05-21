@@ -249,46 +249,70 @@ frame=trbl%
 
 \subsubsection{fft变换}
 
-首先采用伪代码说明算法过程：
+采用伪代码说明算法过程：
 
 \makeatletter
 \def\BState{\State\hskip-\ALG@thistlm}
 \makeatother
 \begin{algorithm}[htb]
-  \caption{数字转换为复数数组}
+  \caption{fft}
   \begin{algorithmic}
     \Require
-      数字的首地址，复数数组的首地址
-    \Ensure
-      复数数组的长度
+      数组的长度 num\_len,数组首地址 num\_p, 傅里叶逆变换标志 inv
     \Procedure{ASM Procedure}{}
-    \State 将数字首地址赋给 esi, 复数数组首地址赋给 edi .
-    \State 初始化临时变量 n，表示数组长度.
-    \BState \emph{arr\_loop}:
-    \State 利用 esi 遍历数字.
-    \If {[esi] == 0}
+    \If {num\_len == 1}
     \State \textbf{goto} \emph{done}.
     \EndIf
-    \If {[esi] == '-'} 
-    \State \textbf{goto} \emph{negtive}.
-    \EndIf
-    \State 调用 int\_to\_float函数，将整数转换为浮点数表示.
-    \State 将结果赋给 [edi] 的实部.
-    \State inc esi.
-    \State inc n.
-    \State add edi, 8.
-    \State \textbf{goto} \emph{arr\_loop}.
-    \BState \emph{negtive}:
-    \State 符号标志取反
-    \State inc esi
-    \State \textbf{goto} \emph{arr\_loop}.
+    \State 计算数组 mid = num\_len $\div$ 2,将数组分为两部分进行递归计算.
+    \State 首先保存在 temp 数组里.
+    \State 遍历元素组，将偶数部分放到temp数组前半部分，奇数部分放到temp数组后半部分.
+    \State 然后将 temp 数组复制回原数组.
+    \State 调用两次 fft 函数计算前半部分和后半部分.
+    \State 计算当前数组的 fft 变换结果：
+    \State edx 作为遍历下标，遍历 0$\rightarrow$mid.
+    \BState \emph{main\_loop}:
+    \State 首先计算单位复根,如果 inv 为1，单位根变为共轭复数。
+    \State 根据公式(\ref{fft1})、公式(\ref{fft2})计算得到 fft 的值，保存在 temp 数组中.
+    \State inc edx
+    \State cmp edx, mid
+    \State jz main\_loop\_break
+    \textbf{goto} \emph{main\_loop}.
+    \State 将 temp 数组复制回原数组.
     \BState \emph{done}:
-    \State mov eax, n.
     \State ret.
-
     \EndProcedure
+    \begin{align}
+      A(\omega^k_n)=A_1(\omega^k_{\frac{n}{2}})+\omega^k_nA_1(\omega^k_{\frac{n}{2}}) \label{fft1}\\
+      A(\omega^{k+\frac{n}{2}}_n)=A_1(\omega^k_{\frac{n}{2}})-\omega^k_nA_1(\omega^k_{\frac{n}{2}})\label{fft2}
+    \end{align}
+    
   \end{algorithmic}
 \end{algorithm}
+
+其中涉及到 cp\_mul 函数，代码如下：
+
+\begin{lstlisting}[language={[x86masm]Assembler}]
+  LOCAL temp:cp
+  fld cp1.x
+  fmul cp2.x
+  fld cp1.y
+  fmul cp2.y
+  fsubp st(1),st(0)
+  fstp temp.x
+
+  fld cp1.x
+  fmul cp2.y
+  fld cp1.y
+  fmul cp2.x
+  faddp st(1),st(0)
+  fstp temp.y
+
+  fld temp.x
+  fld temp.y
+  ret
+\end{lstlisting}
+
+调用函数后，结果保存在 fpu 中，外部将结果从 fpu 弹出就能得到函数结果。
 
 在得到 fft 变换函数后，首先对两个输入的数字进行fft变换，在复数相乘后，进行 ifft 得到乘积。
 
@@ -642,67 +666,5 @@ GetOpenFileName 函数将用户选择的文件文件名保存在 str\_file\_name
 可以看出，计算器能够得到正确的结果。
 
 \subsection{心得体会}
-
-
-
-\section{示例}
-
-\begin{figure}[!ht]
-  \centering
-  \includegraphics[width=0.6\linewidth]{merge-sort-recursion-tree}
-  \caption{Merge sort recursion tree：一张示意图}
-  \label{fig:mergesort}
-\end{figure}
-
-\subsubsection{第一阶段}
-在第一阶段，我们准备……
-
-\subsection{实施技术方案所需的条件}
-此部分说明所需的软硬件等环境，建议使用表格的形式，方便表述。
-
-\begin{table}[!ht]
-  \centering
-  \caption{硬件、软件环境}
-  \label{tab:soft-hardware}
-  \begin{tabular}{@{}lcl@{}}
-    \toprule
-                              & 指标     & \multicolumn{1}{c}{版本参数} \\ \midrule
-    \multirow{2}{*}{硬件环境} & CPU      & Intel i7-6500U               \\ \cmidrule(l){2-3}
-                              & RAM      & 8 GB                         \\ \midrule
-    \multirow{2}{*}{软件环境} & 操作系统 & \begin{tabular}[c]{@{}l@{}}Windows 10 Pro x86\_64\\  Ubuntu 18.04.3 LTS\end{tabular}    \\ \cmidrule(l){2-3}
-                              & Python   & Python 3.7.6                 \\ \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{存在的主要问题和技术关键}
-目前存在的主要问题是……
-
-正文，小四，行距 22 磅。
-
-\subsection{预期能够达到的研究目标}
-要包括最后提交的成果。
-
-\section{课题计划进度表}
-大致的课题计划进度如下表 \ref{tab:progress} 所示。
-
-\begin{table}[!ht]
-  \centering
-  \caption{毕业设计计划进度表}
-  \label{tab:progress}
-  \begin{tabular}{@{}cllc@{}}
-    \toprule
-    阶段 & \multicolumn{1}{c}{任务} & \multicolumn{1}{c}{完成标志} & 时间规划       \\ \midrule
-    1    & 第一阶段的任务……          & 成功搭建……                    & 2019.12-2020.1 \\ \midrule
-    2    & 第二阶段的任务……          & 成功验证……                    & 2020.1-2020.2  \\ \midrule
-    3    & 第三阶段的任务……          & 成功验证……失效，并优化……增强  & 2020.2-2020.4  \\ \midrule
-    4    & 第四阶段的任务……          & 成功完成毕业设计              & 2020.4-2020.5  \\ \bottomrule
-  \end{tabular}
-\end{table}
-
-注意：下文的参考文献应包含近 5 年内文献，经典文献除外。
-
-\section{参考文献}
-% 删除默认的「参考文献 / Reference」标题，使用上面定义的 section 标题
-\printbibliography[heading=none]
 
 \end{document}
