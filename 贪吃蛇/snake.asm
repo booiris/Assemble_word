@@ -39,14 +39,14 @@ window_y_len equ 14
 cell_size equ 50
 buffer_size equ 50
 
-public h_dc_buffer, h_dc_snake_body, h_dc_snake_head, speed,h_dc_bmp,h_dc_snake_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji
+public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji
 
 .data
 
 speed dword 1
 player1_dir dword 2
 player1_now_dir dword 2
-fps dword 4
+fps dword 3
 now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1
@@ -66,13 +66,10 @@ str_status_class_name byte 'status_class', 0
 
 h_instance dword ?
 h_window_main dword ?
-h_window_player1 dword ?
-h_window_player2 dword ?
-h_window_status dword ?
 h_dc_background dword ?
-h_dc_snake_head dword ?
-h_dc_snake_body dword ?
-h_dc_snake_tail dword ?
+h_dc_player1_head dword ?
+h_dc_player1_body dword ?
+h_dc_player1_tail dword ?
 h_dc_apple dword ?
 h_dc_apple_mask dword ?
 h_dc_wall dword ?
@@ -116,7 +113,7 @@ _create_background PROC
     .while @cnt != buffer_size
         invoke	CreateCompatibleDC, h_dc
         mov	[esi], eax
-        invoke CreateCompatibleBitmap, h_dc, 1200, 700
+        invoke CreateCompatibleBitmap, h_dc, 1200, 729
         mov [edi], eax
         invoke	SelectObject,[esi],[edi]
         invoke SetStretchBltMode,[esi],HALFTONE
@@ -126,15 +123,15 @@ _create_background PROC
     .endw
 
     invoke	CreateCompatibleDC, h_dc
-	mov	h_dc_snake_head, eax
+	mov	h_dc_player1_head, eax
     invoke	CreateCompatibleDC, h_dc
-	mov	h_dc_snake_body, eax
+	mov	h_dc_player1_body, eax
     invoke	CreateCompatibleDC, h_dc
 	mov	h_dc_bmp, eax
     invoke  CreateCompatibleDC, h_dc
-    mov h_dc_snake_tail, eax
+    mov h_dc_player1_tail, eax
 
-    invoke CreateCompatibleBitmap, h_dc,1200,700
+    invoke CreateCompatibleBitmap, h_dc,1200,729
     mov h_dc_bmp_size, eax
     invoke	SelectObject,h_dc_bmp,h_dc_bmp_size
     invoke SetStretchBltMode,h_dc_bmp,COLORONCOLOR
@@ -146,17 +143,17 @@ _create_background PROC
 
     invoke	LoadBitmap,h_instance,snake_head
     mov	h_bmp,eax
-    invoke SelectObject,h_dc_snake_head, h_bmp
+    invoke SelectObject,h_dc_player1_head, h_bmp
     invoke	DeleteObject,h_bmp
 
     invoke LoadBitmap,h_instance, snake_body
     mov h_bmp, eax
-    invoke SelectObject,h_dc_snake_body, h_bmp
+    invoke SelectObject,h_dc_player1_body, h_bmp
     invoke	DeleteObject,h_bmp
 
     invoke LoadBitmap,h_instance, snake_tail
     mov h_bmp, eax
-    invoke SelectObject,h_dc_snake_tail, h_bmp
+    invoke SelectObject,h_dc_player1_tail, h_bmp
     invoke	DeleteObject,h_bmp
 
     invoke  CreateCompatibleDC, h_dc
@@ -203,7 +200,7 @@ _draw_window PROC
     mov	h_dc,eax
 
     mov eax, buffer_index
-    invoke	BitBlt,h_dc,0,0,1200,700,\
+    invoke	BitBlt,h_dc,0,0,1200,729,\
         h_dc_buffer[4*eax],0,0,SRCCOPY
 
     invoke ReleaseDC,h_window_main,h_dc 
@@ -235,7 +232,7 @@ _create_buffer PROC
         .while @cnt < buffer_size
 
             mov esi, @cnt
-            invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,700,h_dc_background,0,0,SRCCOPY
+            invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,729,h_dc_background,0,0,SRCCOPY
             mov ecx, 4
             draw_loop:
                 push ecx
@@ -296,9 +293,9 @@ _close PROC
     .endw
 
     invoke DeleteDC, h_dc_background
-    invoke DeleteDC, h_dc_snake_head
-    invoke DeleteDC, h_dc_snake_body
-    invoke DeleteDC, h_dc_snake_tail
+    invoke DeleteDC, h_dc_player1_head
+    invoke DeleteDC, h_dc_player1_body
+    invoke DeleteDC, h_dc_player1_tail
     invoke DeleteDC, h_dc_bmp
     invoke DeleteObject, h_dc_bmp_size
     ret
@@ -369,35 +366,11 @@ _main_window PROC
     mov st_window_class.lpszClassName, offset str_class_name
     invoke RegisterClassEx, addr st_window_class
 
-    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 50, 1200, 700, NULL, NULL, h_instance, NULL
+    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 50, 1200, 729, NULL, NULL, h_instance, NULL
     mov h_window_main, eax
     invoke ShowWindow, h_window_main, SW_SHOWNORMAL
     invoke UpdateWindow, h_window_main
 
-    ; invoke	RtlZeroMemory,addr st_window_class,sizeof st_window_class
-    ; invoke LoadCursor, 0, IDC_ARROW
-    ; mov st_window_class.hCursor, eax
-    ; push h_instance
-    ; pop st_window_class.hInstance
-    ; mov st_window_class.cbSize, sizeof WNDCLASSEX
-    ; mov st_window_class.style, CS_HREDRAW or CS_VREDRAW
-    ; mov st_window_class.lpfnWndProc, offset _proc_status_window
-    ; mov st_window_class.hbrBackground, COLOR_WINDOW+1
-    ; mov st_window_class.lpszClassName, offset str_status_class_name
-    ; invoke RegisterClassEx, addr st_window_class
-
-
-    ; invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_class_name, 0, WS_POPUP , 1, 10, 500, 650, h_window_main,0, h_instance, NULL
-    ; mov h_window_status, eax
-    ; invoke ShowWindow, h_window_status, SW_SHOWNORMAL
-    ; invoke UpdateWindow, h_window_status
-
-    ; invoke CreateWindowEx, WS_EX_CLIENTEDGE, offset str_class_name, 0, WS_POPUP , 500, 10, 500, 650, h_window_main,0, h_instance, NULL
-    ; mov h_window_status, eax
-    ; invoke ShowWindow, h_window_status, SW_SHOWNORMAL
-    ; invoke UpdateWindow, h_window_status
-
-    
     .while TRUE
         invoke GetMessage, addr st_msg, NULL, 0, 0
         .break .if eax == 0

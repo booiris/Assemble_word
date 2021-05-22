@@ -60,11 +60,12 @@ player1_size dword ?
 .code
  ; 现在的绘图原理是这样的：
  ; 后端运算完后，将每一个物体塞入一个队列，前端从队列中取出物体绘制
- ;比如蛇头位于 x,y,方向是向左,就把x,y,物体蛇头标志，方向信息塞入队列，前端就可以根据这些信息绘制图像
+ ; 比如蛇头位于 x,y,方向是向左,就把x,y,物体蛇头标志，方向信息塞入队列，前端就可以根据这些信息绘制图像
 
  ; 窗口调用 _draw_map 函数，在 _draw_map 函数中，根据蛇的移动变化调用 _create_draw_item函数将物体信息塞入队列
 
-; create_draw_item 创建消息，输入值为物体的位置，优先级，绘制的物体和状态
+ ; create_draw_item 创建消息，输入值为物体的位置，优先级，绘制的物体和状态
+
 _create_draw_item PROC uses eax edx ecx,pos:dword,prio:dword,item:dword,state:dword
    
     local x,y
@@ -90,24 +91,73 @@ _create_draw_item PROC uses eax edx ecx,pos:dword,prio:dword,item:dword,state:dw
     ret 
 _create_draw_item ENDP
 
-_create_apple PROC 
+random proc uses edx ecx,value:dword
+	;随机范围为0~value
+	invoke	GetTickCount
+	xor		edx,edx
+	mov		ecx,value
+	div		ecx
+	mov		eax,edx
+	ret
+random endp
 
+_create_apple PROC uses eax
+get_random:
+    invoke random, window_y_len*window_x_len
+    .if map[4*eax] != 0
+        jmp get_random
+    .else
+        mov map[4*eax], apple
+    .endif
     ret
 _create_apple ENDP
 
-_get_nxt_pos PROC now_pos:dword,dir:dword
+_get_nxt_pos PROC uses edx ebx, now_pos:dword,dir:dword
+    local now_x, now_y:dword
     mov eax, now_pos
-    .if dir == 1
+    mov ebx, window_x_len
+    xor edx, edx
+    div ebx
+    mov now_y, eax
+    mov now_x, edx
+    mov eax, now_pos
+    .if dir == 1                    ; 上
+        .if now_y == 0
+            add eax, window_x_len * window_y_len
+        .endif
         sub eax, window_x_len
-    .elseif dir == 2
+    .elseif dir == 2                ; 右
+        .if now_x == window_x_len - 1
+            sub eax, window_x_len
+        .endif
         add eax, 1
-    .elseif dir == 3
+    .elseif dir == 3                ; 下
+        .if now_y == window_y_len - 1
+            sub eax, window_x_len * window_y_len
+        .endif
         add eax, window_x_len
-    .elseif dir == 4
+    .elseif dir == 4                ; 左
+        .if now_x == 0
+            add eax, window_x_len
+        .endif
         sub eax, 1
     .endif
     ret
 _get_nxt_pos ENDP
+
+; _get_nxt_pos PROC uses edx ebx, now_pos:dword,dir:dword
+;     mov eax, now_pos
+;     .if dir == 1                    ; 上
+;         sub eax, window_x_len
+;     .elseif dir == 2                ; 右
+;         add eax, 1
+;     .elseif dir == 3                ; 下
+;         add eax, window_x_len
+;     .elseif dir == 4                ; 左
+;         sub eax, 1
+;     .endif
+;     ret
+; _get_nxt_pos ENDP
 
 _draw_map PROC player1_dir:dword
     local @index:dword,father_dir,father_pos
@@ -118,8 +168,12 @@ _draw_map PROC player1_dir:dword
     mov player1_list[0].dir, eax
     invoke _get_nxt_pos, player1_list[0].pos,player1_dir
 
+    ; 蛇头会碰到苹果
     .if map[4*eax] == apple
-        ; 蛇头会碰到苹果
+
+        ; 产生新苹果
+        invoke _create_apple
+
         mov ecx, 0
         .while ecx != player1_size
             push ecx
@@ -168,7 +222,7 @@ _draw_map PROC player1_dir:dword
         mov eax, father_pos
         mov map[4*edx], snake_tail
 
-
+    ; 蛇没吃到苹果
     .else
         mov ecx, 0
         .while ecx != player1_size
@@ -203,7 +257,7 @@ _draw_map PROC player1_dir:dword
 
     mov @index,0 
     ; 绘制场景中的墙，苹果等
-    .while @index < window_x_len*window_y_len
+    .while @index < window_x_len * window_y_len
         mov eax, @index 
         mov ecx, map[4*eax]
         .if ecx == apple 
@@ -215,7 +269,7 @@ _draw_map PROC player1_dir:dword
     .endw
 
     mov @index, 0
-    .while @index < window_x_len*window_y_len
+    .while @index < window_x_len * window_y_len
         mov eax, @index 
         mov ecx, const_map[4*eax]
         .if ecx == grass

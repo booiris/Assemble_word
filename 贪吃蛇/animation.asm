@@ -31,7 +31,7 @@ cell_size equ 50
 printf PROTO C :dword, :vararg
 public _draw_item
 
-extern h_dc_buffer:dword,h_dc_snake_body:dword, h_dc_snake_head:dword, speed:dword,h_dc_bmp:dword,h_dc_snake_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword
+extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword
 
 .data?
 draw_struct STRUCT
@@ -47,6 +47,7 @@ player_struct STRUCT
     snake_head_y dword ?
     emoji_cnt   dword ?
     emoji_kind  dword ?       
+    big_cnt     dword ?
 player_struct ENDS
 
 player1 player_struct {}
@@ -55,6 +56,32 @@ player1 player_struct {}
 out_format_int byte '%d', 20h,0
 
 .code
+
+_div_part PROC @player_y:dword,@player_x:dword,@size:dword
+    add @player_y, 1200
+    add @player_x, 700
+    mov ecx, 2400
+    sub ecx, @size
+    mov edx, 1400
+    sub edx, @size
+    mov eax, 0ffffffh
+    .if @player_y >= ecx
+        sub @player_y, 2400
+        sub @player_x, 700
+        invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@size, @size,h_dc_bmp,0,0,@size,@size,eax
+    .elseif @player_y < 1200
+        sub @player_x, 700
+        invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@size, @size,h_dc_bmp,0,0,@size,@size,eax
+    .elseif @player_x >= edx
+        sub @player_y, 1200
+        sub @player_x, 1400
+        invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@size, @size,h_dc_bmp,0,0,@size,@size,eax
+    .elseif @player_x < 700
+        sub @player_y, 1200
+        invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@size, @size,h_dc_bmp,0,0,@size,@size,eax
+    .endif
+    ret
+_div_part ENDP
 
 _draw_head PROC uses esi, player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
     local @player_x,@player_y, @dis, @head_size
@@ -79,20 +106,30 @@ _draw_head PROC uses esi, player:dword, index_x:dword, index_y:dword, dir:dword,
         add @player_y, ecx
     .endif
 
+    ;改变蛇大小
+    .if player1.big_cnt > 0
+        add @head_size,50
+        sub  @player_y,25
+        sub @player_x,25
+    .endif
+
     mov ecx, @player_x
     mov player1.snake_head_x, ecx
     mov ecx, @player_y
     mov player1.snake_head_y, ecx
 
     mov esi, frame_time
-    invoke StretchBlt,h_dc_bmp,0,0,@head_size, @head_size,h_dc_snake_head,0,0,136,136,SRCCOPY
+    invoke StretchBlt,h_dc_bmp,0,0,@head_size, @head_size,h_dc_player1_head,0,0,136,136,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@head_size, @head_size,h_dc_bmp,0,0,@head_size,@head_size,eax
+
+    invoke _div_part,@player_y,@player_x ,@head_size
+    
     ret
 _draw_head ENDP
 
 _draw_body PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
-    local @player_x,@player_y, @dis, @body_size
+    local @player_x:dword,@player_y:dword, @dis, @body_size
     mov @body_size, cell_size
     mov ecx, index_x
     imul ecx, cell_size
@@ -114,15 +151,24 @@ _draw_body PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, 
         add @player_y, ecx
     .endif
 
+    ;改变蛇大小
+    .if player1.big_cnt > 0
+        add @body_size,50
+        sub  @player_y,25
+        sub @player_x,25
+    .endif
+
     mov esi, frame_time
-    invoke StretchBlt,h_dc_bmp,0,0,@body_size, @body_size,h_dc_snake_body,0,0,136,136,SRCCOPY
+    invoke StretchBlt,h_dc_bmp,0,0,@body_size, @body_size,h_dc_player1_body,0,0,136,136,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@body_size, @body_size,h_dc_bmp,0,0,@body_size,@body_size,eax
+
+    invoke _div_part,@player_y,@player_x ,@body_size
     ret
 _draw_body ENDP
 
 _draw_tail PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
-    local @player_x,@player_y, @dis, @tail_size, @bmp_x
+    local @player_x:dword,@player_y:dword, @dis, @tail_size, @bmp_x,@h_dc_player
     mov @tail_size, cell_size
     mov ecx, index_x
     imul ecx, cell_size
@@ -130,6 +176,7 @@ _draw_tail PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, 
     mov ecx, index_y
     imul ecx, cell_size
     mov @player_y, ecx
+
     mov ecx, speed
     imul ecx, frame_time
     .if dir == 1
@@ -156,10 +203,20 @@ _draw_tail PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, 
         mov @bmp_x, 300
     .endif
 
+    ;改变蛇大小
+    .if player1.big_cnt > 0
+        add @tail_size,50
+        sub  @player_y,25
+        sub @player_x,25
+    .endif
+
     mov esi, frame_time
-    invoke StretchBlt,h_dc_bmp,0,0,@tail_size, @tail_size,h_dc_snake_tail,@bmp_x,0,100,100,SRCCOPY
+    invoke StretchBlt,h_dc_bmp,0,0,@tail_size, @tail_size,h_dc_player1_tail,@bmp_x,0,100,100,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@tail_size, @tail_size,h_dc_bmp,0,0,@tail_size,@tail_size,eax
+
+    
+    invoke _div_part,@player_y,@player_x ,@tail_size
     ret
 _draw_tail ENDP
 
