@@ -57,6 +57,9 @@ draw_list_size dword ?
 player1_list point_struct 500 dup ({})
 player1_size dword ?
 
+player2_list point_struct 500 dup ({})
+player2_size dword ?
+
 .code
  ; 现在的绘图原理是这样的：
  ; 后端运算完后，将每一个物体塞入一个队列，前端从队列中取出物体绘制

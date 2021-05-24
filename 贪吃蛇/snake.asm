@@ -26,6 +26,10 @@ wall       equ 106
 grass      equ 107
 emoji      equ 108
 emoji_mask equ 109
+player2_head equ     109
+player2_body  equ    110
+player2_tail   equ   111
+wall    equ        112
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -46,7 +50,9 @@ public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_pl
 speed dword 1
 player1_dir dword 2
 player1_now_dir dword 2
-fps dword 3
+player2_dir dword 4
+player2_now_dir dword 4
+fps dword 2
 now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1

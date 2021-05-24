@@ -14,6 +14,7 @@
 #define player2_head      109
 #define player2_body      110
 #define player2_tail      111
+#define wall            112
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
@@ -28,3 +29,4 @@ apple       BITMAP      "apple.bmp"
 apple_mask  BITMAP      "apple_mask.bmp"
 grass       BITMAP      "grass.bmp"
 emoji       BITMAP      "emoji.bmp"
+wall        BITMAP      "wall.bmp"
