@@ -3,6 +3,7 @@
 .model flat,stdcall
 option casemap:none
 
+include define.inc
 include		windows.inc
 include		user32.inc
 includelib	user32.lib
@@ -14,20 +15,6 @@ include     winmm.inc
 includelib  winmm.lib
 
 includelib msvcrt.lib
-
-player1_head equ 101
-player1_body equ 102
-player1_tail equ 103
-apple      equ 104
-apple_mask equ 105
-wall       equ 106
-grass      equ 107
-emoji      equ 108
-player2_head equ 109
-player2_body equ 110
-player2_tail equ 111
-window_x_len equ 24
-window_y_len equ 14
 
 printf PROTO C :dword, :vararg
 public draw_list,draw_list_size,_build_map,_draw_map
