@@ -29,7 +29,6 @@ emoji_mask equ 109
 player2_head equ     109
 player2_body  equ    110
 player2_tail   equ   111
-wall    equ        112
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -201,6 +200,8 @@ _draw_window PROC
 
     .while buffer_cnt == 0
     .endw
+
+    invoke printf, offset out_format_int, buffer_cnt
 
     invoke GetDC, h_window_main
     mov	h_dc,eax

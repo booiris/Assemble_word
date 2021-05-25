@@ -14,7 +14,6 @@
 #define player2_head      109
 #define player2_body      110
 #define player2_tail      111
-#define wall            112
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
