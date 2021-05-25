@@ -21,26 +21,20 @@ includelib msvcrt.lib
 printf PROTO C :dword, :vararg
 public _draw_item
 
-extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword
+extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword
 
 .data?
-draw_struct STRUCT
-    x dword ?
-    y dword ?
-    prio dword ?
-    item dword ?
-    state dword ?
-draw_struct ENDS
 
 player_struct STRUCT 
-    player1_head_x dword ?
-    player1_head_y dword ?
+    head_x dword ?
+    head_y dword ?
     emoji_cnt   dword ?
     emoji_kind  dword ?       
     big_cnt     dword ?
 player_struct ENDS
 
 player1 player_struct {}
+player2 player_struct {}
 
 .const 
 out_format_int byte '%d', 20h,0
@@ -73,8 +67,18 @@ _div_part PROC @player_y:dword,@player_x:dword,@size:dword
     ret
 _div_part ENDP
 
-_draw_head PROC uses esi, player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
-    local @player_x,@player_y, @dis, @head_size
+_draw_head PROC uses esi edi, player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
+    local @player_x,@player_y, @dis, @head_size,@h_dc
+    assume edi:ptr player_struct
+    .if player == 1
+        mov edi, offset player1
+        mov eax, h_dc_player1_head
+        mov @h_dc, eax
+    .else 
+        mov edi, offset player2
+        mov eax, h_dc_player2_head
+        mov @h_dc, eax
+    .endif
     mov @head_size, cell_size
     mov ecx, index_x
     imul ecx, cell_size
@@ -97,29 +101,40 @@ _draw_head PROC uses esi, player:dword, index_x:dword, index_y:dword, dir:dword,
     .endif
 
     ;改变蛇大小
-    .if player1.big_cnt > 0
+    .if [edi].big_cnt > 0
         add @head_size,50
         sub  @player_y,25
         sub @player_x,25
     .endif
 
     mov ecx, @player_x
-    mov player1.player1_head_x, ecx
+    mov [edi].head_x, ecx
     mov ecx, @player_y
-    mov player1.player1_head_y, ecx
+    mov [edi].head_y, ecx
 
     mov esi, frame_time
-    invoke StretchBlt,h_dc_bmp,0,0,@head_size, @head_size,h_dc_player1_head,0,0,136,136,SRCCOPY
+    invoke StretchBlt,h_dc_bmp,0,0,@head_size, @head_size,@h_dc,0,0,136,136,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@head_size, @head_size,h_dc_bmp,0,0,@head_size,@head_size,eax
 
     invoke _div_part,@player_y,@player_x ,@head_size
     
+    assume edi:nothing
     ret
 _draw_head ENDP
 
-_draw_body PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
-    local @player_x:dword,@player_y:dword, @dis, @body_size
+_draw_body PROC uses esi edi,player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
+    local @player_x:dword,@player_y:dword, @dis, @body_size,@h_dc
+    assume edi:ptr player_struct
+    .if player == 1
+        mov edi, offset player1
+        mov eax, h_dc_player1_body
+        mov @h_dc, eax
+    .else 
+        mov edi, offset player2
+        mov eax, h_dc_player2_body
+        mov @h_dc, eax
+    .endif
     mov @body_size, cell_size
     mov ecx, index_x
     imul ecx, cell_size
@@ -142,23 +157,34 @@ _draw_body PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, 
     .endif
 
     ;改变蛇大小
-    .if player1.big_cnt > 0
+    .if [edi].big_cnt > 0
         add @body_size,50
         sub  @player_y,25
         sub @player_x,25
     .endif
 
     mov esi, frame_time
-    invoke StretchBlt,h_dc_bmp,0,0,@body_size, @body_size,h_dc_player1_body,0,0,136,136,SRCCOPY
+    invoke StretchBlt,h_dc_bmp,0,0,@body_size, @body_size,@h_dc,0,0,136,136,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@body_size, @body_size,h_dc_bmp,0,0,@body_size,@body_size,eax
 
     invoke _div_part,@player_y,@player_x ,@body_size
+    assume edi:nothing
     ret
 _draw_body ENDP
 
-_draw_tail PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
-    local @player_x:dword,@player_y:dword, @dis, @tail_size, @bmp_x,@h_dc_player
+_draw_tail PROC uses esi edi,player:dword, index_x:dword, index_y:dword, dir:dword, frame_time:dword
+    local @player_x:dword,@player_y:dword, @dis, @tail_size, @bmp_x,@h_dc_player,@h_dc
+    assume edi:ptr player_struct
+    .if player == 1
+        mov edi, offset player1
+        mov eax, h_dc_player1_tail
+        mov @h_dc, eax
+    .else 
+        mov edi, offset player2
+        mov eax, h_dc_player2_tail
+        mov @h_dc, eax
+    .endif
     mov @tail_size, cell_size
     mov ecx, index_x
     imul ecx, cell_size
@@ -194,23 +220,24 @@ _draw_tail PROC uses esi,player:dword, index_x:dword, index_y:dword, dir:dword, 
     .endif
 
     ;改变蛇大小
-    .if player1.big_cnt > 0
+    .if [edi].big_cnt > 0
         add @tail_size,50
         sub  @player_y,25
         sub @player_x,25
     .endif
 
     mov esi, frame_time
-    invoke StretchBlt,h_dc_bmp,0,0,@tail_size, @tail_size,h_dc_player1_tail,@bmp_x,0,100,100,SRCCOPY
+    invoke StretchBlt,h_dc_bmp,0,0,@tail_size, @tail_size,@h_dc,@bmp_x,0,100,100,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@tail_size, @tail_size,h_dc_bmp,0,0,@tail_size,@tail_size,eax
 
     
     invoke _div_part,@player_y,@player_x ,@tail_size
+    assume edi:nothing
     ret
 _draw_tail ENDP
 
-_draw_apple PROC uses esi,index_x:dword, index_y:dword, frame_time:dword
+_draw_apple PROC uses esi edi,index_x:dword, index_y:dword, frame_time:dword
     local @apple_size,@apple_x,@apple_y
     mov @apple_size, cell_size
     mov eax, index_x
@@ -246,11 +273,11 @@ _draw_apple PROC uses esi,index_x:dword, index_y:dword, frame_time:dword
     ret
 _draw_apple ENDP
 
-_draw_wall PROC uses esi, index_x:dword, index_y:dword, frame_time:dword
+_draw_wall PROC uses esi edi, index_x:dword, index_y:dword, frame_time:dword
     ret
 _draw_wall ENDP
 
-_draw_grass PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
+_draw_grass PROC uses esi edi,index_x:dword, index_y:dword,frame_time:dword
     local @grass_size,@grass_x,@grass_y
     mov @grass_size, cell_size
     add @grass_size,5
@@ -267,14 +294,20 @@ _draw_grass PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     ret
 _draw_grass ENDP
 
-_draw_emoji PROC uses esi,state:dword,frame_time:dword
+_draw_emoji PROC uses esi edi,player:dword,state:dword,frame_time:dword
     local @emoji_size,@emoji_x,@emoji_y,@emoji
+    assume edi:ptr player_struct
+    .if player == 1
+        mov edi, offset player1
+    .else 
+        mov edi, offset player2
+    .endif
     mov @emoji_size, cell_size
-    mov eax, player1.player1_head_x
+    mov eax, [edi].head_x
     sub eax, cell_size/4*3
     mov @emoji_x, eax
     
-    mov eax, player1.player1_head_y
+    mov eax, [edi].head_y
     add eax, cell_size/4
     mov @emoji_y, eax
     mov esi, frame_time
@@ -290,7 +323,7 @@ _draw_emoji PROC uses esi,state:dword,frame_time:dword
     invoke StretchBlt,h_dc_bmp,0,0,@emoji_size, @emoji_size,h_dc_emoji,eax,0,100,100,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],@emoji_y,@emoji_x,@emoji_size, @emoji_size,h_dc_bmp,0,0,@emoji_size,@emoji_size,eax
-
+    assume edi:nothing
     ret
 _draw_emoji ENDP
 
@@ -302,6 +335,12 @@ _draw_item PROC item:draw_struct,frame_time:dword
         invoke _draw_body,1,item.x,item.y,item.state,frame_time
     .elseif item.item == player1_tail
         invoke _draw_tail,1,item.x,item.y,item.state,frame_time
+    .elseif item.item == player2_head
+        invoke _draw_head,2,item.x,item.y,item.state,frame_time
+    .elseif item.item == player2_body
+        invoke _draw_body,2,item.x,item.y,item.state,frame_time
+    .elseif item.item == player2_tail
+        invoke _draw_tail,2,item.x,item.y,item.state,frame_time
     .elseif item.item == apple
         invoke _draw_apple,item.x,item.y,frame_time
     .elseif item.item == wall 
@@ -309,13 +348,24 @@ _draw_item PROC item:draw_struct,frame_time:dword
     .elseif item.item == grass 
         invoke _draw_grass,item.x,item.y,frame_time
     .elseif item.item == emoji
-        mov player1.emoji_cnt, 500
-        mov eax ,item.state
-        mov player1.emoji_kind, eax
+        .if item.player == 1
+            mov player1.emoji_cnt, 500
+            mov eax ,item.state
+            mov player1.emoji_kind, eax
+        .else
+            mov player2.emoji_cnt, 500
+            mov eax ,item.state
+            mov player2.emoji_kind, eax
+        .endif
+        
     .endif
     .if player1.emoji_cnt != 0
         dec player1.emoji_cnt
-        invoke _draw_emoji,player1.emoji_kind,frame_time
+        invoke _draw_emoji,1,player1.emoji_kind,frame_time
+    .endif
+    .if player2.emoji_cnt != 0
+        dec player2.emoji_cnt
+        invoke _draw_emoji,2,player2.emoji_kind,frame_time
     .endif
     ret
 _draw_item ENDP

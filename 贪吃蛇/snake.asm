@@ -16,7 +16,7 @@ includelib  winmm.lib
 
 includelib msvcrt.lib
 
-public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji
+public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji,h_dc_player2_body,h_dc_player2_head,h_dc_player2_tail
 
 .data
 
@@ -25,11 +25,12 @@ player1_dir dword 2
 player1_now_dir dword 2
 player2_dir dword 4
 player2_now_dir dword 4
-fps dword 2
+fps dword 4
 now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1
 buffer_index dword 0
+is_show dword 0
 
 .const
 
@@ -49,6 +50,9 @@ h_dc_background dword ?
 h_dc_player1_head dword ?
 h_dc_player1_body dword ?
 h_dc_player1_tail dword ?
+h_dc_player2_head dword ?
+h_dc_player2_body dword ?
+h_dc_player2_tail dword ?
 h_dc_apple dword ?
 h_dc_apple_mask dword ?
 h_dc_wall dword ?
@@ -61,20 +65,12 @@ h_dc_time dword ?
 h_dc_buffer dword buffer_size dup (?)
 h_dc_buffer_size dword buffer_size dup(?)
 
-draw_struct STRUCT
-    x dword ?
-    y dword ?
-    prio dword ?
-    item dword ?
-    state dword ?
-draw_struct ENDS
-
 
 .code
 
 printf PROTO C :dword, :vararg
 _draw_item PROTO, :draw_struct,:dword
-_draw_map PROTO, :dword                        ;player1的方向
+_draw_map PROTO, :dword,:dword                        ;player1的方向
 _build_map PROTO
 extern draw_list:draw_struct,draw_list_size:dword
 
@@ -164,40 +160,68 @@ _create_background PROC
     invoke SelectObject,h_dc_emoji, h_bmp
     invoke	DeleteObject,h_bmp
 
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_player2_head, eax
+    invoke LoadBitmap,h_instance, player2_head
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_player2_head, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_player2_body, eax
+    invoke LoadBitmap,h_instance, player2_body
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_player2_body, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_player2_tail, eax
+    invoke LoadBitmap,h_instance, player2_tail
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_player2_tail, h_bmp
+    invoke	DeleteObject,h_bmp
+
     invoke ReleaseDC,h_window_main,h_dc 
     invoke _build_map
     ret 
 _create_background ENDP
 
 
+_set_show PROC 
+    mov is_show, 1
+    ret
+_set_show ENDP
+
 _draw_window PROC 
     local h_dc
 
-    .while buffer_cnt == 0
-    .endw
+    main_loop:
+        cmp create_buffer, 0
+        jz main_loop_end
 
-    invoke printf, offset out_format_int, buffer_cnt
+        .while buffer_cnt == 0 || (!is_show)
+        .endw
 
-    invoke GetDC, h_window_main
-    mov	h_dc,eax
+        invoke GetDC, h_window_main
+        mov	h_dc,eax
 
-    mov eax, buffer_index
-    invoke	BitBlt,h_dc,0,0,1200,729,\
-        h_dc_buffer[4*eax],0,0,SRCCOPY
+        mov eax, buffer_index
+        invoke	BitBlt,h_dc,0,0,1200,729,\
+            h_dc_buffer[4*eax],0,0,SRCCOPY
 
-    invoke ReleaseDC,h_window_main,h_dc 
+        invoke ReleaseDC,h_window_main,h_dc 
 
-    dec buffer_cnt
-    inc buffer_index
-    .if buffer_index == buffer_size
-        mov buffer_index, 0
-    .endif
+        dec buffer_cnt
+        inc buffer_index
+        .if buffer_index == buffer_size
+            mov buffer_index, 0
+        .endif
 
-    invoke timeKillEvent, h_dc_time
-    invoke timeSetEvent,fps,1,_draw_window,NULL,TIME_ONESHOT
-    mov h_dc_time, eax
+        mov is_show, 0
+        jmp main_loop
 
-    ret
+    main_loop_end:
+        ret
 _draw_window ENDP
 
 _create_buffer PROC 
@@ -209,9 +233,11 @@ _create_buffer PROC
         .while buffer_cnt != 0
         .endw
 
-        invoke _draw_map, player1_dir
+        invoke _draw_map, player1_dir, player2_dir
         mov eax, player1_dir 
         mov player1_now_dir, eax
+        mov eax, player2_dir 
+        mov player2_now_dir, eax
 
         mov @cnt, 0
         .while @cnt < buffer_size
@@ -226,7 +252,7 @@ _create_buffer PROC
                 draw_list_loop:
                     push ecx
                     dec ecx
-                    imul ecx, 20
+                    imul ecx, 24
                     .if draw_list[ecx].prio == edi
                         invoke _draw_item, draw_list[ecx], @cnt
                     .endif
@@ -245,8 +271,9 @@ _create_buffer ENDP
 
 _init PROC
     call _create_background
+    invoke CreateThread, NULL, 0,_draw_window ,NULL,0,NULL
     invoke CreateThread, NULL, 0,_create_buffer ,NULL,0,NULL
-    invoke timeSetEvent,fps,1,_draw_window,NULL,TIME_ONESHOT
+    invoke timeSetEvent,fps,0,_set_show,NULL,TIME_PERIODIC
     mov h_dc_time, eax
     ret
 _init ENDP
@@ -260,7 +287,14 @@ _check_operation PROC
         mov player1_dir, 4
     .elseif eax == key_d &&  player1_now_dir != 4
         mov player1_dir, 2
-    
+    .elseif eax == key_up && player2_now_dir != 3
+        mov player2_dir, 1
+    .elseif eax == key_down &&  player2_now_dir != 1
+        mov player2_dir, 3
+    .elseif eax == key_left &&  player2_now_dir != 2
+        mov player2_dir, 4
+    .elseif eax == key_right &&  player2_now_dir != 4
+        mov player2_dir, 2
     .endif
     ret
 _check_operation ENDP
@@ -278,6 +312,7 @@ _close PROC
         inc @cnt
     .endw
 
+    invoke timeKillEvent, h_dc_time
     invoke DeleteDC, h_dc_background
     invoke DeleteDC, h_dc_player1_head
     invoke DeleteDC, h_dc_player1_body
@@ -297,20 +332,7 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         push h_window
         pop h_window_main
         call _init
-    
-    ; .elseif	eax ==	WM_PAINT
-    ;     invoke	BeginPaint,h_window,addr st_ps
-    ;     mov	h_dc,eax
 
-    ;     mov	eax,st_ps.rcPaint.right
-    ;     sub	eax,st_ps.rcPaint.left
-    ;     mov	ecx,st_ps.rcPaint.bottom
-    ;     sub	ecx,st_ps.rcPaint.top
-
-    ;     invoke	BitBlt,h_dc,st_ps.rcPaint.left,st_ps.rcPaint.top,eax,ecx,\
-    ;         h_dc_main_window_1,st_ps.rcPaint.left,st_ps.rcPaint.top,SRCCOPY
-    ;     invoke	EndPaint,h_window,addr st_ps
-    ; .elseif eax == WM_MOVING
     .elseif eax == WM_KEYDOWN
         mov eax, wParam
         call _check_operation

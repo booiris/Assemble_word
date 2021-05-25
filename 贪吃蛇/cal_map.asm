@@ -28,14 +28,6 @@ out_format_int byte '%d', 20h,0
 
 .data?
 
-draw_struct STRUCT ;绘制的消息
-    x dword ?
-    y dword ?
-    prio dword ?    ;绘制的优先级，蛇头比蛇身和蛇尾优先级高，蛇身比蛇尾优先级高，优先级 1,2,3,4，1最大
-    item dword ?    ;绘制的物体
-    state dword ?   ;绘制物体的状态，现在只有方向状态，但等以后可能加入死亡动画等等，会加入蛇的正在死亡状态等等
-draw_struct ENDS
-
 point_struct STRUCT ;原来只是队列存位置不够，加了方向和部位
     pos dword ?
     dir dword ?
@@ -58,10 +50,9 @@ player2_size dword ?
 
  ; 窗口调用 _draw_map 函数，在 _draw_map 函数中，根据蛇的移动变化调用 _create_draw_item函数将物体信息塞入队列
 
- ; create_draw_item 创建消息，输入值为物体的位置，优先级，绘制的物体和状态
+ ; create_draw_item 创建消息，输入值为物体的位置，优先级,绘制的物体和状态
 
-_create_draw_item PROC uses eax edx ecx,pos:dword,prio:dword,item:dword,state:dword
-   
+_create_draw_item PROC uses eax edx ecx,pos:dword,prio:dword,item:dword,state:dword,player:dword
     local x,y
     xor edx,edx
     mov eax, pos
@@ -70,7 +61,7 @@ _create_draw_item PROC uses eax edx ecx,pos:dword,prio:dword,item:dword,state:dw
     mov x,eax
     mov y,edx
     mov ecx, draw_list_size
-    imul ecx, 20
+    imul ecx, 24
     mov eax, x
     mov draw_list[ecx].x, eax
     mov eax, y
@@ -81,6 +72,8 @@ _create_draw_item PROC uses eax edx ecx,pos:dword,prio:dword,item:dword,state:dw
     mov draw_list[ecx].item, eax
     mov eax, state
     mov draw_list[ecx].state, eax
+    mov eax, player
+    mov draw_list[ecx].player, eax
     inc draw_list_size
     ret 
 _create_draw_item ENDP
@@ -139,63 +132,61 @@ _get_nxt_pos PROC uses edx ebx, now_pos:dword,dir:dword
     ret
 _get_nxt_pos ENDP
 
-; _get_nxt_pos PROC uses edx ebx, now_pos:dword,dir:dword
-;     mov eax, now_pos
-;     .if dir == 1                    ; 上
-;         sub eax, window_x_len
-;     .elseif dir == 2                ; 右
-;         add eax, 1
-;     .elseif dir == 3                ; 下
-;         add eax, window_x_len
-;     .elseif dir == 4                ; 左
-;         sub eax, 1
-;     .endif
-;     ret
-; _get_nxt_pos ENDP
+_draw_snake PROC uses esi edi, player:dword,enemy:dword, dir:dword
+    local father_dir,father_pos,snake_head,snake_body,snake_tail
 
-_draw_map PROC player1_dir:dword
-    local @index:dword,father_dir,father_pos
-
-    mov draw_list_size, 0
-
-    mov eax, player1_dir
-    mov player1_list[0].dir, eax
-    invoke _get_nxt_pos, player1_list[0].pos,player1_dir
+    assume esi:ptr point_struct
+    .if player == 1
+        mov snake_head, player1_head
+        mov snake_body, player1_body
+        mov snake_tail, player1_tail
+        mov esi , offset player1_list
+        mov edi, offset player1_size
+    .else 
+        mov snake_head, player2_head
+        mov snake_body, player2_body
+        mov snake_tail, player2_tail
+        mov esi , offset player2_list
+        mov edi, offset player2_size
+    .endif
+    mov eax, dir
+    mov [esi].dir, eax
+    invoke _get_nxt_pos, [esi].pos,dir
 
     ; 蛇头会碰到苹果
     .if map[4*eax] == apple
-
         ; 产生新苹果
         invoke _create_apple
-
         mov ecx, 0
-        .while ecx != player1_size
+        .while ecx != [edi]
             push ecx
             imul ecx,12
-            .if player1_list[ecx].part == player1_head 
-                invoke _create_draw_item, player1_list[ecx].pos, 1, emoji, 0
+            mov eax, [esi+ecx].part
+            .if  eax == snake_head 
+                invoke _create_draw_item, [esi+ecx].pos, 1, emoji, 0, player
                 mov eax, 2
-            .elseif player1_list[ecx].part == player1_body 
+            .elseif eax == snake_body 
                 mov eax, 3
-            .elseif player1_list[ecx].part == player1_tail
-                mov player1_list[ecx].part, player1_body
-                mov eax, player1_list[ecx].pos
+            .elseif eax == snake_tail
+                mov eax, snake_body
+                mov [esi+ecx].part, eax
+                mov eax, [esi+ecx].pos
                 mov father_pos, eax
                 mov eax, 3
             .endif
 
-            invoke _create_draw_item, player1_list[ecx].pos, eax, player1_list[ecx].part, player1_list[ecx].dir
-            mov eax, player1_list[ecx].pos
+            invoke _create_draw_item, [esi+ecx].pos, eax, [esi+ecx].part, [esi+ecx].dir,player
+            mov eax, [esi+ecx].pos
             mov map[4*eax], 0
-            invoke _get_nxt_pos, player1_list[ecx].pos,player1_list[ecx].dir
+            invoke _get_nxt_pos, [esi+ecx].pos,[esi+ecx].dir
             mov edx, eax ; edx存储下一个位置
-            mov eax, player1_list[ecx].part
+            mov eax, [esi+ecx].part
             mov map[4*edx], eax
-            mov player1_list[ecx].pos, edx
-            mov edx, player1_list[ecx].dir
+            mov [esi+ecx].pos, edx
+            mov edx, [esi+ecx].dir
             .if ecx != 0
                 mov eax, father_dir
-                mov player1_list[ecx].dir, eax
+                mov [esi+ecx].dir, eax
             .endif 
             mov father_dir, edx
             pop ecx
@@ -203,51 +194,65 @@ _draw_map PROC player1_dir:dword
         .endw
 
         ; 添加尾巴
-        mov ecx, player1_size
+        mov ecx, [edi]
         imul ecx, 12
         mov eax, father_dir
-        mov player1_list[ecx].dir, eax
+        mov [esi+ecx].dir, eax
         mov eax, father_pos
-        mov player1_list[ecx].pos, eax
-        mov player1_list[ecx].part, player1_tail
-        inc player1_size
+        mov [esi+ecx].pos, eax
+        mov eax, snake_tail
+        mov [esi+ecx].part, eax
+        inc dword ptr [edi]
         add father_dir, 4
-        invoke _create_draw_item, father_pos, 4, player1_tail, father_dir
+        invoke _create_draw_item, father_pos, 4, snake_tail, father_dir,player
         mov eax, father_pos
-        mov map[4*edx], player1_tail
+        mov eax,snake_tail
+        mov map[4*edx], eax
 
     ; 蛇没吃到苹果
     .else
         mov ecx, 0
-        .while ecx != player1_size
+        .while ecx != [edi]
             push ecx
             imul ecx,12
-            .if player1_list[ecx].part == player1_head 
+            mov eax, [esi+ecx].part
+            .if eax == snake_head
                 mov eax, 2
-            .elseif player1_list[ecx].part == player1_body 
+            .elseif eax == snake_body
                 mov eax, 3
-            .elseif player1_list[ecx].part == player1_tail
+            .elseif eax == snake_tail
                 mov eax, 4
             .endif
             
-            invoke _create_draw_item, player1_list[ecx].pos, eax, player1_list[ecx].part, player1_list[ecx].dir
-            mov eax, player1_list[ecx].pos
+            invoke _create_draw_item, [esi+ecx].pos, eax, [esi+ecx].part, [esi+ecx].dir,player
+            mov eax, [esi+ecx].pos
             mov map[4*eax],0
-            invoke _get_nxt_pos, player1_list[ecx].pos,player1_list[ecx].dir
+            invoke _get_nxt_pos, [esi+ecx].pos,[esi+ecx].dir
             mov edx, eax ; edx存储下一个位置
-            mov eax, player1_list[ecx].part
+            mov eax, [esi+ecx].part
             mov map[4*edx], eax
-            mov player1_list[ecx].pos, edx
-            mov edx, player1_list[ecx].dir
+            mov [esi+ecx].pos, edx
+            mov edx, [esi+ecx].dir
             .if ecx != 0
                 mov eax, father_dir
-                mov player1_list[ecx].dir, eax
+                mov [esi+ecx].dir, eax
             .endif 
             mov father_dir, edx
             pop ecx
             inc ecx
         .endw
     .endif
+    assume esi:nothing
+    ret
+_draw_snake ENDP 
+
+_draw_map PROC player1_dir:dword,player2_dir
+    local @index:dword
+
+    mov draw_list_size, 0
+
+    invoke _draw_snake, 1,2,player1_dir
+    invoke _draw_snake, 2,1,player2_dir
 
     mov @index,0 
     ; 绘制场景中的墙，苹果等
@@ -255,9 +260,9 @@ _draw_map PROC player1_dir:dword
         mov eax, @index 
         mov ecx, map[4*eax]
         .if ecx == apple 
-            invoke _create_draw_item, @index,3,apple,0
+            invoke _create_draw_item, @index,3,apple,0,0
         .elseif ecx == wall
-            invoke _create_draw_item, @index,3,wall,0
+            invoke _create_draw_item, @index,3,wall,0,0
         .endif
         inc @index
     .endw
@@ -267,7 +272,7 @@ _draw_map PROC player1_dir:dword
         mov eax, @index 
         mov ecx, const_map[4*eax]
         .if ecx == grass
-             invoke _create_draw_item, @index,1,grass,0
+             invoke _create_draw_item, @index,1,grass,0,0
         .endif
         inc @index
     .endw
@@ -304,6 +309,33 @@ _build_map PROC uses esi
     mov player1_list[ecx].pos,  eax
     mov player1_list[ecx].part,  player1_tail
     inc player1_size
+
+    mov eax, 5*window_x_len+20
+    mov ecx, player2_size
+    imul ecx, 12
+    mov player2_list[ecx].dir,  4
+    mov player2_list[ecx].pos,  eax
+    mov player2_list[ecx].part,  player2_head
+    inc player2_size
+
+    inc eax
+    mov map[4*eax], player2_body 
+    mov ecx, player2_size
+    imul ecx, 12
+    mov player2_list[ecx].dir,  4
+    mov player2_list[ecx].pos,  eax
+    mov player2_list[ecx].part,  player2_body
+    inc player2_size
+
+    inc eax 
+    mov map[4*eax], player2_tail
+    mov ecx, player2_size
+    imul ecx, 12
+    mov player2_list[ecx].dir,  4
+    mov player2_list[ecx].pos,  eax
+    mov player2_list[ecx].part,  player2_tail
+    inc player2_size
+
 
     dec eax
     mov map[4*eax], apple

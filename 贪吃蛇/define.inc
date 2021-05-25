@@ -23,3 +23,12 @@ window_x_len equ 24
 window_y_len equ 14
 cell_size equ 50
 buffer_size equ 50
+
+draw_struct STRUCT ;绘制的消息
+    x dword ?
+    y dword ?
+    prio dword ?    ;绘制的优先级，蛇头比蛇身和蛇尾优先级高，蛇身比蛇尾优先级高，优先级 1,2,3,4，1最大
+    item dword ?    ;绘制的物体
+    state dword ?   ;绘制物体的状态，现在只有方向状态，但等以后可能加入死亡动画等等，会加入蛇的正在死亡状态等等
+    player dword ?
+draw_struct ENDS
