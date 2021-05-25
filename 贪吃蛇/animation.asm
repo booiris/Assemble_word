@@ -17,13 +17,17 @@ includelib  Msimg32.lib
 
 includelib msvcrt.lib
 
-snake_head equ 101
-snake_body equ 102
-snake_tail equ 103
+player1_head equ 101
+player1_body equ 102
+player1_tail equ 103
 apple      equ 104
+apple_mask equ 105
 wall       equ 106
 grass      equ 107
 emoji      equ 108
+player2_head equ 109
+player2_body equ 110
+player2_tail equ 111
 window_x_len equ 24
 window_y_len equ 14
 cell_size equ 50
@@ -43,8 +47,8 @@ draw_struct STRUCT
 draw_struct ENDS
 
 player_struct STRUCT 
-    snake_head_x dword ?
-    snake_head_y dword ?
+    player1_head_x dword ?
+    player1_head_y dword ?
     emoji_cnt   dword ?
     emoji_kind  dword ?       
     big_cnt     dword ?
@@ -114,9 +118,9 @@ _draw_head PROC uses esi, player:dword, index_x:dword, index_y:dword, dir:dword,
     .endif
 
     mov ecx, @player_x
-    mov player1.snake_head_x, ecx
+    mov player1.player1_head_x, ecx
     mov ecx, @player_y
-    mov player1.snake_head_y, ecx
+    mov player1.player1_head_y, ecx
 
     mov esi, frame_time
     invoke StretchBlt,h_dc_bmp,0,0,@head_size, @head_size,h_dc_player1_head,0,0,136,136,SRCCOPY
@@ -280,11 +284,11 @@ _draw_grass ENDP
 _draw_emoji PROC uses esi,state:dword,frame_time:dword
     local @emoji_size,@emoji_x,@emoji_y,@emoji
     mov @emoji_size, cell_size
-    mov eax, player1.snake_head_x
+    mov eax, player1.player1_head_x
     sub eax, cell_size/4*3
     mov @emoji_x, eax
     
-    mov eax, player1.snake_head_y
+    mov eax, player1.player1_head_y
     add eax, cell_size/4
     mov @emoji_y, eax
     mov esi, frame_time
@@ -306,11 +310,11 @@ _draw_emoji ENDP
 
 _draw_item PROC item:draw_struct,frame_time:dword
     ; invoke printf, offset out_format_int, item.item
-    .if item.item == snake_head
+    .if item.item == player1_head
         invoke _draw_head,1,item.x,item.y,item.state,frame_time
-    .elseif item.item == snake_body
+    .elseif item.item == player1_body
         invoke _draw_body,1,item.x,item.y,item.state,frame_time
-    .elseif item.item == snake_tail
+    .elseif item.item == player1_tail
         invoke _draw_tail,1,item.x,item.y,item.state,frame_time
     .elseif item.item == apple
         invoke _draw_apple,item.x,item.y,frame_time

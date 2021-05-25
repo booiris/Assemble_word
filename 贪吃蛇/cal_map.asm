@@ -15,13 +15,17 @@ includelib  winmm.lib
 
 includelib msvcrt.lib
 
-snake_head equ 101
-snake_body equ 102
-snake_tail equ 103
+player1_head equ 101
+player1_body equ 102
+player1_tail equ 103
 apple      equ 104
+apple_mask equ 105
 wall       equ 106
 grass      equ 107
 emoji      equ 108
+player2_head equ 109
+player2_body equ 110
+player2_tail equ 111
 window_x_len equ 24
 window_y_len equ 14
 
@@ -181,13 +185,13 @@ _draw_map PROC player1_dir:dword
         .while ecx != player1_size
             push ecx
             imul ecx,12
-            .if player1_list[ecx].part == snake_head 
+            .if player1_list[ecx].part == player1_head 
                 invoke _create_draw_item, player1_list[ecx].pos, 1, emoji, 0
                 mov eax, 2
-            .elseif player1_list[ecx].part == snake_body 
+            .elseif player1_list[ecx].part == player1_body 
                 mov eax, 3
-            .elseif player1_list[ecx].part == snake_tail
-                mov player1_list[ecx].part, snake_body
+            .elseif player1_list[ecx].part == player1_tail
+                mov player1_list[ecx].part, player1_body
                 mov eax, player1_list[ecx].pos
                 mov father_pos, eax
                 mov eax, 3
@@ -218,12 +222,12 @@ _draw_map PROC player1_dir:dword
         mov player1_list[ecx].dir, eax
         mov eax, father_pos
         mov player1_list[ecx].pos, eax
-        mov player1_list[ecx].part, snake_tail
+        mov player1_list[ecx].part, player1_tail
         inc player1_size
         add father_dir, 4
-        invoke _create_draw_item, father_pos, 4, snake_tail, father_dir
+        invoke _create_draw_item, father_pos, 4, player1_tail, father_dir
         mov eax, father_pos
-        mov map[4*edx], snake_tail
+        mov map[4*edx], player1_tail
 
     ; ÉßÃ»³Ôµ½Æ»¹û
     .else
@@ -231,11 +235,11 @@ _draw_map PROC player1_dir:dword
         .while ecx != player1_size
             push ecx
             imul ecx,12
-            .if player1_list[ecx].part == snake_head 
+            .if player1_list[ecx].part == player1_head 
                 mov eax, 2
-            .elseif player1_list[ecx].part == snake_body 
+            .elseif player1_list[ecx].part == player1_body 
                 mov eax, 3
-            .elseif player1_list[ecx].part == snake_tail
+            .elseif player1_list[ecx].part == player1_tail
                 mov eax, 4
             .endif
             
@@ -293,25 +297,25 @@ _build_map PROC uses esi
     imul ecx, 12
     mov player1_list[ecx].dir,  2
     mov player1_list[ecx].pos,  eax
-    mov player1_list[ecx].part,  snake_head
+    mov player1_list[ecx].part,  player1_head
     inc player1_size
 
     dec eax
-    mov map[4*eax], snake_body 
+    mov map[4*eax], player1_body 
     mov ecx, player1_size
     imul ecx, 12
     mov player1_list[ecx].dir,  2
     mov player1_list[ecx].pos,  eax
-    mov player1_list[ecx].part,  snake_body
+    mov player1_list[ecx].part,  player1_body
     inc player1_size
 
     dec eax 
-    mov map[4*eax], snake_tail
+    mov map[4*eax], player1_tail
     mov ecx, player1_size
     imul ecx, 12
     mov player1_list[ecx].dir,  2
     mov player1_list[ecx].pos,  eax
-    mov player1_list[ecx].part,  snake_tail
+    mov player1_list[ecx].part,  player1_tail
     inc player1_size
 
     dec eax

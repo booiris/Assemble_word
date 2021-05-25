@@ -17,18 +17,17 @@ includelib msvcrt.lib
 
 ICO_MAIN equ 100
 back_ground equ 100
-snake_head equ 101
-snake_body equ 102
-snake_tail equ 103
+player1_head equ 101
+player1_body equ 102
+player1_tail equ 103
 apple      equ 104
 apple_mask equ 105
 wall       equ 106
 grass      equ 107
 emoji      equ 108
-emoji_mask equ 109
-player2_head equ     109
-player2_body  equ    110
-player2_tail   equ   111
+player2_head equ 109
+player2_body equ 110
+player2_tail equ 111
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -146,17 +145,17 @@ _create_background PROC
     invoke SelectObject,h_dc_background, h_bmp 
     invoke	DeleteObject,h_bmp
 
-    invoke	LoadBitmap,h_instance,snake_head
+    invoke	LoadBitmap,h_instance,player1_head
     mov	h_bmp,eax
     invoke SelectObject,h_dc_player1_head, h_bmp
     invoke	DeleteObject,h_bmp
 
-    invoke LoadBitmap,h_instance, snake_body
+    invoke LoadBitmap,h_instance, player1_body
     mov h_bmp, eax
     invoke SelectObject,h_dc_player1_body, h_bmp
     invoke	DeleteObject,h_bmp
 
-    invoke LoadBitmap,h_instance, snake_tail
+    invoke LoadBitmap,h_instance, player1_tail
     mov h_bmp, eax
     invoke SelectObject,h_dc_player1_tail, h_bmp
     invoke	DeleteObject,h_bmp
