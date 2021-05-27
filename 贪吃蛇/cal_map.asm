@@ -263,6 +263,10 @@ _draw_map PROC player1_dir:dword,player2_dir
             invoke _create_draw_item, @index,3,apple,0,0
         .elseif ecx == wall
             invoke _create_draw_item, @index,3,wall,0,0
+        .elseif ecx == fast
+            invoke _create_draw_item, @index,3,fast,0,0
+        .elseif ecx == large
+            invoke _create_draw_item, @index,3,large,0,0
         .endif
         inc @index
     .endw
@@ -337,8 +341,6 @@ _build_map PROC uses esi
     inc player2_size
 
 
-    dec eax
-    mov map[4*eax], apple
 
     mov eax, 9*window_x_len+10
     mov map[4*eax], apple
@@ -348,6 +350,13 @@ _build_map PROC uses esi
     mov map[4*eax], apple
     mov eax, 7*window_x_len+18
     mov map[4*eax], apple
+
+    inc eax
+    mov map[4*eax], wall
+    inc eax
+    mov map[4*eax], fast
+    inc eax
+    mov map[4*eax], large
 
     mov eax, 9*window_x_len+10
     mov const_map[4*eax], grass

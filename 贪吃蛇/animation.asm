@@ -21,7 +21,7 @@ includelib msvcrt.lib
 printf PROTO C :dword, :vararg
 public _draw_item
 
-extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword
+extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword,h_dc_wall:dword,h_dc_fast:dword,h_dc_large:dword
 
 .data?
 
@@ -274,6 +274,18 @@ _draw_apple PROC uses esi edi,index_x:dword, index_y:dword, frame_time:dword
 _draw_apple ENDP
 
 _draw_wall PROC uses esi edi, index_x:dword, index_y:dword, frame_time:dword
+    local wall_x,wall_y
+    mov eax, index_x
+    imul eax, cell_size
+    mov wall_x, eax
+    mov eax, index_y
+    imul eax, cell_size
+    mov wall_y, eax
+
+    mov esi, frame_time
+    invoke StretchBlt,h_dc_bmp,0,0,cell_size, cell_size,h_dc_wall,0,0,56,56,SRCCOPY
+    mov eax, 0ffffffh
+    invoke TransparentBlt,h_dc_buffer[4*esi],wall_y,wall_x,cell_size, cell_size,h_dc_bmp,0,0,cell_size,cell_size,eax
     ret
 _draw_wall ENDP
 
@@ -327,6 +339,35 @@ _draw_emoji PROC uses esi edi,player:dword,state:dword,frame_time:dword
     ret
 _draw_emoji ENDP
 
+_draw_fast PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
+    local x,y
+    mov eax, index_x
+    imul eax, cell_size
+    mov x, eax
+    mov eax, index_y
+    imul eax, cell_size
+    mov y, eax
+    invoke StretchBlt,h_dc_bmp,0,0,cell_size, cell_size,h_dc_fast,0,0,55,114,SRCCOPY
+    mov eax, 0ffffffh
+    invoke TransparentBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_bmp,0,0,cell_size,cell_size,eax
+    ret
+_draw_fast ENDP
+
+_draw_large PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
+    local x,y
+    mov eax, index_x
+    imul eax, cell_size
+    mov x, eax
+    mov eax, index_y
+    imul eax, cell_size
+    mov y, eax
+
+    invoke StretchBlt,h_dc_bmp,0,0,cell_size, cell_size,h_dc_large,0,0,81,99,SRCCOPY
+    mov eax, 0ffffffh
+    invoke TransparentBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_bmp,0,0,cell_size,cell_size,eax
+    ret
+_draw_large ENDP
+
 _draw_item PROC item:draw_struct,frame_time:dword
     ; invoke printf, offset out_format_int, item.item
     .if item.item == player1_head
@@ -357,7 +398,10 @@ _draw_item PROC item:draw_struct,frame_time:dword
             mov eax ,item.state
             mov player2.emoji_kind, eax
         .endif
-        
+    .elseif item.item == fast
+        invoke _draw_fast,item.x,item.y,frame_time
+    .elseif item.item == large
+        invoke _draw_large,item.x,item.y,frame_time
     .endif
     .if player1.emoji_cnt != 0
         dec player1.emoji_cnt

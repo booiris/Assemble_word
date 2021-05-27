@@ -14,6 +14,8 @@
 #define player2_head      109
 #define player2_body      110
 #define player2_tail      111
+#define fast              112
+#define large             113
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
@@ -29,3 +31,5 @@ wall        BITMAP      "wall.bmp"
 player2_head  BITMAP      "player2_head.bmp"
 player2_body  BITMAP      "player2_body.bmp"
 player2_tail  BITMAP      "player2_tail.bmp"
+fast        BITMAP        "fast.bmp"
+large       BITMAP         "large.bmp"
