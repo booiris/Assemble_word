@@ -25,6 +25,9 @@ extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed
 
 .data?
 
+fast_index dword ?
+fast_cnt dword ?
+
 player_struct STRUCT 
     head_x dword ?
     head_y dword ?
@@ -249,21 +252,19 @@ _draw_apple PROC uses esi edi,index_x:dword, index_y:dword, frame_time:dword
 
     xor edx,edx
     mov eax, frame_time
-    mov ecx, 50
-    div ecx
-    mov eax, edx
 
     xor edx,edx
-    mov ecx, 10
+    mov ecx, 5
     div ecx
     
-    .if eax > 3
-        mov ecx, 6
+    .if eax > 5
+        mov ecx, 10
         sub ecx, eax
         mov eax, ecx
     .endif
     add @apple_x,eax
     add @apple_y,eax
+
     sal eax, 1
     sub @apple_size,eax
 
@@ -347,9 +348,18 @@ _draw_fast PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     mov eax, index_y
     imul eax, cell_size
     mov y, eax
-    invoke StretchBlt,h_dc_bmp,0,0,cell_size, cell_size,h_dc_fast,0,0,55,114,SRCCOPY
+    invoke StretchBlt,h_dc_bmp,0,0,cell_size, cell_size,h_dc_fast,fast_index,0,100,100,SRCCOPY
     mov eax, 0ffffffh
     invoke TransparentBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_bmp,0,0,cell_size,cell_size,eax
+    inc fast_cnt
+    .if fast_cnt == 12
+        mov fast_cnt,0
+        add fast_index, 100
+        .if fast_index == 500
+            mov fast_index, 0
+        .endif
+    .endif
+    
     ret
 _draw_fast ENDP
 

@@ -25,16 +25,18 @@ player1_dir dword 2
 player1_now_dir dword 2
 player2_dir dword 4
 player2_now_dir dword 4
-fps dword 4
+fps dword 4000
 now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1
 buffer_index dword 0
 is_show dword 0
 
+dw1m dword 1000000
+
 .const
 
-out_format_int byte '%d', 20h,0
+out_format_int byte '%u', 20h,0
 
 str_main_caption byte 'Ã∞≥‘…ﬂ', 0
 str_class_name byte 'main_window_class', 0
@@ -92,7 +94,7 @@ _create_background PROC
     .while @cnt != buffer_size
         invoke	CreateCompatibleDC, h_dc
         mov	[esi], eax
-        invoke CreateCompatibleBitmap, h_dc, 1200, 729
+        invoke CreateCompatibleBitmap, h_dc, 1206, 729
         mov [edi], eax
         invoke	SelectObject,[esi],[edi]
         invoke SetStretchBltMode,[esi],HALFTONE
@@ -110,7 +112,7 @@ _create_background PROC
     invoke  CreateCompatibleDC, h_dc
     mov h_dc_player1_tail, eax
 
-    invoke CreateCompatibleBitmap, h_dc,1200,729
+    invoke CreateCompatibleBitmap, h_dc,1206,729
     mov h_dc_bmp_size, eax
     invoke	SelectObject,h_dc_bmp,h_dc_bmp_size
     invoke SetStretchBltMode,h_dc_bmp,COLORONCOLOR
@@ -219,7 +221,28 @@ _create_background ENDP
 
 
 _set_show PROC 
+    local time1:qword,time2:qword,freq:qword
     mov is_show, 1
+    invoke QueryPerformanceFrequency, addr freq
+    finit
+    .while create_buffer == 1
+        invoke QueryPerformanceCounter,addr time1
+        mov is_show, 1  
+        xor eax, eax
+        .while eax < fps
+            invoke QueryPerformanceCounter,addr time2
+            mov eax,dword ptr time1
+            mov edx,dword ptr time1+4
+            sub dword ptr time2, eax
+            sbb dword ptr time2+4, edx
+            fild time2
+            fimul dw1m
+            fild freq
+            fdiv
+            fistp time2
+            mov eax,dword ptr time2
+        .endw
+    .endw
     ret
 _set_show ENDP
 
@@ -237,7 +260,7 @@ _draw_window PROC
         mov	h_dc,eax
 
         mov eax, buffer_index
-        invoke	BitBlt,h_dc,0,0,1200,729,\
+        invoke	BitBlt,h_dc,0,0,1206,729,\
             h_dc_buffer[4*eax],0,0,SRCCOPY
 
         invoke ReleaseDC,h_window_main,h_dc 
@@ -274,7 +297,7 @@ _create_buffer PROC
         .while @cnt < buffer_size
 
             mov esi, @cnt
-            invoke	BitBlt,h_dc_buffer[4*esi],0,0,1200,729,h_dc_background,0,0,SRCCOPY
+            invoke	BitBlt,h_dc_buffer[4*esi],0,0,1206,729,h_dc_background,0,0,SRCCOPY
             mov ecx, 4
             draw_loop:
                 push ecx
@@ -304,7 +327,7 @@ _init PROC
     call _create_background
     invoke CreateThread, NULL, 0,_draw_window ,NULL,0,NULL
     invoke CreateThread, NULL, 0,_create_buffer ,NULL,0,NULL
-    invoke timeSetEvent,fps,0,_set_show,NULL,TIME_PERIODIC
+    invoke CreateThread, NULL, 0, _set_show,NULL , 0, NULL
     mov h_dc_time, eax
     ret
 _init ENDP
@@ -405,7 +428,7 @@ _main_window PROC
     mov st_window_class.lpszClassName, offset str_class_name
     invoke RegisterClassEx, addr st_window_class
 
-    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 50, 1200, 729, NULL, NULL, h_instance, NULL
+    invoke CreateWindowEx, 0, offset str_class_name, offset str_main_caption, WS_CAPTION or WS_SYSMENU or WS_MINIMIZEBOX xor WS_BORDER, 220, 50, 1206, 729, NULL, NULL, h_instance, NULL
     mov h_window_main, eax
     invoke ShowWindow, h_window_main, SW_SHOWNORMAL
     invoke UpdateWindow, h_window_main
