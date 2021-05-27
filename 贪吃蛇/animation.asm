@@ -21,7 +21,7 @@ includelib msvcrt.lib
 printf PROTO C :dword, :vararg
 public _draw_item
 
-extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword,h_dc_wall:dword,h_dc_fast:dword,h_dc_large:dword
+extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword,h_dc_wall:dword,h_dc_fast:dword,h_dc_large:dword,h_dc_large_mask:dword
 
 .data?
 
@@ -362,9 +362,9 @@ _draw_large PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     imul eax, cell_size
     mov y, eax
 
-    invoke StretchBlt,h_dc_bmp,0,0,cell_size, cell_size,h_dc_large,0,0,81,99,SRCCOPY
-    mov eax, 0ffffffh
-    invoke TransparentBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_bmp,0,0,cell_size,cell_size,eax
+    mov esi, frame_time
+    invoke StretchBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_large_mask,0,0,50,50,SRCAND
+    invoke StretchBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_large,0,0,50,50,SRCPAINT
     ret
 _draw_large ENDP
 

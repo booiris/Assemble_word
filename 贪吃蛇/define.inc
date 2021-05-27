@@ -13,6 +13,7 @@ player2_body equ 110
 player2_tail equ 111
 fast         equ 112
 large        equ 113
+large_mask   equ 114
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h

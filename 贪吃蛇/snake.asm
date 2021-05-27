@@ -16,7 +16,7 @@ includelib  winmm.lib
 
 includelib msvcrt.lib
 
-public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji,h_dc_player2_body,h_dc_player2_head,h_dc_player2_tail,h_dc_wall,h_dc_large,h_dc_fast
+public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji,h_dc_player2_body,h_dc_player2_head,h_dc_player2_tail,h_dc_wall,h_dc_large,h_dc_fast,h_dc_large_mask
 
 .data
 
@@ -59,6 +59,7 @@ h_dc_wall dword ?
 h_dc_grass dword ?
 h_dc_emoji dword ?
 h_dc_large dword ?
+h_dc_large_mask dword ?
 h_dc_fast dword ?
 h_dc_bmp dword ?
 h_dc_bmp_size dword ?
@@ -202,6 +203,13 @@ _create_background PROC
     invoke LoadBitmap,h_instance, large
     mov h_bmp, eax
     invoke SelectObject,h_dc_large, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_large_mask, eax
+    invoke LoadBitmap,h_instance, large_mask
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_large_mask, h_bmp
     invoke	DeleteObject,h_bmp
 
     invoke ReleaseDC,h_window_main,h_dc 
