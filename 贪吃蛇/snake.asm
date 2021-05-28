@@ -75,7 +75,7 @@ h_dc_buffer_size dword buffer_size dup(?)
 
 printf PROTO C :dword, :vararg
 _draw_item PROTO, :draw_struct,:dword
-_draw_map PROTO, :dword,:dword                        ;player1µÄ·½Ïò
+_draw_map PROTO, :dword,:dword   
 _build_map PROTO
 extern draw_list:draw_struct,draw_list_size:dword
 
