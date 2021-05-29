@@ -1,5 +1,4 @@
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#include		<resource.h>
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 #define	ICO_MAIN		100
 #define back_ground     100
@@ -17,6 +16,8 @@
 #define fast              112
 #define large             113
 #define large_mask        114
+#define dizzy             115
+#define dizzy_mask        116
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
@@ -35,3 +36,5 @@ player2_tail  BITMAP      "player2_tail.bmp"
 fast        BITMAP        "fast.bmp"
 large       BITMAP         "large.bmp"
 large_mask  BITMAP         "large_mask.bmp"
+dizzy       BITMAP         "dizzy.bmp"
+dizzy_mask  BITMAP         "dizzy_mask.bmp"

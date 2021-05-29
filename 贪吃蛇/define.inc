@@ -14,6 +14,8 @@ player2_tail equ 111
 fast         equ 112
 large        equ 113
 large_mask   equ 114
+dizzy        equ 115
+dizzy_mask        equ 116
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h
@@ -26,6 +28,7 @@ window_x_len equ 24
 window_y_len equ 14
 cell_size equ 50
 buffer_size equ 50
+large_eat equ 1
 
 draw_struct STRUCT ;绘制的消息
     x dword ?

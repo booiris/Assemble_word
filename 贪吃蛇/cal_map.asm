@@ -19,6 +19,8 @@ includelib msvcrt.lib
 printf PROTO C :dword, :vararg
 public draw_list,draw_list_size,_build_map,_draw_map
 
+extern fps:dword, player1_reverse:dword, player2_reverse:dword,is_end:dword
+
 .data 
 map dword window_x_len*window_y_len dup (0)
 const_map dword window_x_len*window_y_len dup (0)
@@ -27,7 +29,6 @@ const_map dword window_x_len*window_y_len dup (0)
 out_format_int byte '%d', 20h,0
 
 .data?
-
 point_struct STRUCT ;原来只是队列存位置不够，加了方向和部位
     pos dword ?
     dir dword ?
@@ -99,6 +100,40 @@ get_random:
     ret
 _create_apple ENDP
 
+_create_fast PROC uses eax
+get_random:
+    invoke random, window_y_len*window_x_len
+    .if map[4*eax] != 0
+        jmp get_random
+    .else
+        mov map[4*eax], fast
+    .endif
+    ret
+_create_fast ENDP
+
+_create_dizzy PROC uses eax
+get_random:
+    invoke random, window_y_len*window_x_len
+    .if map[4*eax] != 0
+        jmp get_random
+    .else
+        mov map[4*eax], dizzy
+    .endif
+    ret
+_create_dizzy ENDP
+
+_create_large PROC uses eax
+get_random:
+    invoke random, window_y_len*window_x_len
+    .if map[4*eax] != 0
+        jmp get_random
+    .else
+        mov map[4*eax], large
+    .endif
+    ret
+_create_large ENDP
+
+
 _get_nxt_pos PROC uses edx ebx, now_pos:dword,dir:dword
     local now_x, now_y:dword
     mov eax, now_pos
@@ -133,45 +168,108 @@ _get_nxt_pos PROC uses edx ebx, now_pos:dword,dir:dword
 _get_nxt_pos ENDP
 
 _draw_snake PROC uses esi edi, player:dword,enemy:dword, dir:dword
-    local father_dir,father_pos,snake_head,snake_body,snake_tail
+    local father_dir,father_pos,snake_head,snake_body,snake_tail,reverse
 
     assume esi:ptr point_struct
     .if player == 1
         mov snake_head, player1_head
         mov snake_body, player1_body
         mov snake_tail, player1_tail
+        mov eax, player1_reverse
+        mov reverse, eax
         mov esi , offset player1_list
         mov edi, offset player1_size
     .else 
         mov snake_head, player2_head
         mov snake_body, player2_body
         mov snake_tail, player2_tail
+        mov eax, player2_reverse
+        mov reverse, eax
         mov esi , offset player2_list
         mov edi, offset player2_size
     .endif
+
+    .if reverse != 0
+        invoke _create_draw_item, [esi].pos, 1, emoji, 2, player
+    .endif
+
     mov eax, dir
-    mov [esi].dir, eax
+    mov [esi].dir, eax  ; 改变头的方向
     invoke _get_nxt_pos, [esi].pos,dir
 
+    ; 撞墙的操作是头不动，身子前进，蛇长缩短
+    .if map[4*eax] == wall
+        
+        ; 做一个特判，防止长度降到1时蛇头被修改成蛇尾
+        mov ecx,2
+        .if [edi] > ecx
+            mov ecx,[edi]
+            sub ecx,2
+            imul ecx,12
+            mov eax,snake_tail
+            mov [esi+ecx].part,eax  ; 最后一块蛇身的部位属性置为蛇尾
+            mov edx,[esi+ecx].pos
+            mov map[4*edx],eax ; 修改新蛇尾所在位置的map
+        .endif
+
+        mov ecx,[edi]
+        dec ecx
+        imul ecx,12
+        mov edx,[esi+ecx].pos
+        mov map[4*edx],0  ; 修改原蛇尾所在位置的map
+        dec dword ptr [edi] ; 去掉原蛇尾
+
+        ; 如果有一方输了 is_end 不为0，1为1号嬴， 2为 2号赢，3为平局
+        .if dword ptr [edi] == 1
+            .if player == 1
+                mov is_end, 2
+            .else
+                mov is_end, 1
+            .endif
+        .endif
+
+        invoke _create_draw_item, [esi].pos, 2, [esi].part, 5,player ; 单独画蛇头，dir=5避免撞进墙里的动画
+        invoke _create_draw_item, [esi].pos, 1, emoji, 1, player
+
+        mov ecx, 1 
+        .while ecx != [edi] ; 画其他部位
+            push ecx
+            imul ecx,12
+            mov eax, [esi+ecx].part
+            .if eax == snake_body
+                mov eax, 3
+            .elseif eax == snake_tail
+                mov eax, 4
+            .endif
+            invoke _create_draw_item, [esi+ecx].pos, eax, [esi+ecx].part, [esi+ecx].dir,player
+            pop ecx
+            inc ecx
+        .endw
+
     ; 蛇头会碰到苹果
-    .if map[4*eax] == apple
+    .elseif map[4*eax] == apple
         ; 产生新苹果
         invoke _create_apple
         mov ecx, 0
-        .while ecx != [edi]
+        .while ecx != [edi] ; 遍历蛇的每一块
             push ecx
             imul ecx,12
             mov eax, [esi+ecx].part
             .if  eax == snake_head 
                 invoke _create_draw_item, [esi+ecx].pos, 1, emoji, 0, player
+                mov eax,1
+                .if [edi] == eax ; 长度为1时不存在蛇尾，所以特判
+                    mov eax, [esi+ecx].pos
+                    mov father_pos, eax ; 记录蛇头的位置，用来放新尾巴
+                .endif
                 mov eax, 2
             .elseif eax == snake_body 
                 mov eax, 3
             .elseif eax == snake_tail
                 mov eax, snake_body
-                mov [esi+ecx].part, eax
+                mov [esi+ecx].part, eax ; 尾巴的部位属性变成身体
                 mov eax, [esi+ecx].pos
-                mov father_pos, eax
+                mov father_pos, eax ; 记录尾巴的位置，用来放新尾巴
                 mov eax, 3
             .endif
 
@@ -181,12 +279,12 @@ _draw_snake PROC uses esi edi, player:dword,enemy:dword, dir:dword
             invoke _get_nxt_pos, [esi+ecx].pos,[esi+ecx].dir
             mov edx, eax ; edx存储下一个位置
             mov eax, [esi+ecx].part
-            mov map[4*edx], eax
-            mov [esi+ecx].pos, edx
+            mov map[4*edx], eax 
+            mov [esi+ecx].pos, edx  ; 修改每一块的位置
             mov edx, [esi+ecx].dir
-            .if ecx != 0
+            .if ecx != 0 
                 mov eax, father_dir
-                mov [esi+ecx].dir, eax
+                mov [esi+ecx].dir, eax ; 非头块的方向变为father(前一块)的方向
             .endif 
             mov father_dir, edx
             pop ecx
@@ -211,6 +309,28 @@ _draw_snake PROC uses esi edi, player:dword,enemy:dword, dir:dword
 
     ; 蛇没吃到苹果
     .else
+
+        .if map[4*eax] == fast ; 吃到加速道具
+            sub fps,2000
+            .if fps > 2000
+                invoke _create_fast
+            .endif
+        .endif
+
+        .if map[4*eax] == dizzy ; 吃到眩晕道具
+            .if player == 1
+                add player2_reverse, 20
+            .else
+                add player1_reverse, 20
+            .endif
+            invoke _create_dizzy
+        .endif
+
+        .if map[4*eax] == large ; 吃到变大道具
+            invoke _create_draw_item, 0,4,large_eat,0,player
+            invoke _create_large
+        .endif
+
         mov ecx, 0
         .while ecx != [edi]
             push ecx
@@ -229,7 +349,7 @@ _draw_snake PROC uses esi edi, player:dword,enemy:dword, dir:dword
             mov map[4*eax],0
             invoke _get_nxt_pos, [esi+ecx].pos,[esi+ecx].dir
             mov edx, eax ; edx存储下一个位置
-            mov eax, [esi+ecx].part
+            mov eax, [esi+ecx].part 
             mov map[4*edx], eax
             mov [esi+ecx].pos, edx
             mov edx, [esi+ecx].dir
@@ -246,7 +366,7 @@ _draw_snake PROC uses esi edi, player:dword,enemy:dword, dir:dword
     ret
 _draw_snake ENDP 
 
-_draw_map PROC player1_dir:dword,player2_dir
+_draw_map PROC player1_dir:dword,player2_dir:dword
     local @index:dword
 
     mov draw_list_size, 0
@@ -262,9 +382,11 @@ _draw_map PROC player1_dir:dword,player2_dir
         .if ecx == apple 
             invoke _create_draw_item, @index,3,apple,0,0
         .elseif ecx == wall
-            invoke _create_draw_item, @index,3,wall,0,0
+            invoke _create_draw_item, @index,4,wall,0,0
         .elseif ecx == fast
             invoke _create_draw_item, @index,3,fast,0,0
+        .elseif ecx == dizzy
+            invoke _create_draw_item, @index,3,dizzy,0,0
         .elseif ecx == large
             invoke _create_draw_item, @index,3,large,0,0
         .endif
@@ -287,8 +409,8 @@ _draw_map ENDP
 
 _build_map PROC uses esi
     ; 初始化地图
-
-    mov eax, 5*window_x_len+10
+    ; 蛇
+    mov eax, 12*window_x_len+10
     mov ecx, player1_size
     imul ecx, 12
     mov player1_list[ecx].dir,  2
@@ -314,7 +436,7 @@ _build_map PROC uses esi
     mov player1_list[ecx].part,  player1_tail
     inc player1_size
 
-    mov eax, 5*window_x_len+20
+    mov eax, 12*window_x_len+20
     mov ecx, player2_size
     imul ecx, 12
     mov player2_list[ecx].dir,  4
@@ -341,23 +463,38 @@ _build_map PROC uses esi
     inc player2_size
 
 
+    ; 墙
+    mov ecx, 2*window_x_len+4
+    .while ecx <= 2*window_x_len+19
+        mov map[4*ecx], wall
+        inc ecx
+    .endw
 
-    mov eax, 9*window_x_len+10
-    mov map[4*eax], apple
-    mov eax, 1*window_x_len+12
-    mov map[4*eax], apple
-    mov eax, 3*window_x_len+15
-    mov map[4*eax], apple
-    mov eax, 7*window_x_len+18
-    mov map[4*eax], apple
+    mov ecx, 3*window_x_len+4
+    .while ecx <= 9*window_x_len+4
+        mov map[4*ecx], wall
+        add ecx,window_x_len
+    .endw
 
-    inc eax
-    mov map[4*eax], wall
-    inc eax
-    mov map[4*eax], fast
-    inc eax
-    mov map[4*eax], large
+    mov ecx, 3*window_x_len+19
+    .while ecx <= 9*window_x_len+19
+        mov map[4*ecx], wall
+        add ecx,window_x_len
+    .endw
 
+    
+    ; 道具
+    invoke _create_fast
+    invoke _create_dizzy
+    invoke _create_large
+    
+    ; 苹果
+    invoke _create_apple
+    invoke _create_apple
+    invoke _create_apple
+    invoke _create_apple
+    
+    ; 草
     mov eax, 9*window_x_len+10
     mov const_map[4*eax], grass
     mov eax, 9*window_x_len+11

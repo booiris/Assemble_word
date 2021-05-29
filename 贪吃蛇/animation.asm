@@ -18,15 +18,21 @@ includelib  Msimg32.lib
 
 includelib msvcrt.lib
 
+rand	PROTO C
 printf PROTO C :dword, :vararg
 public _draw_item
 
-extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword,h_dc_wall:dword,h_dc_fast:dword,h_dc_large:dword,h_dc_large_mask:dword
+extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword,h_dc_wall:dword,h_dc_fast:dword,h_dc_dizzy:dword,h_dc_dizzy_mask:dword,h_dc_large:dword,h_dc_large_mask:dword
+
+
+.data
+dizzy_cnt dword 0
 
 .data?
 
 fast_index dword ?
 fast_cnt dword ?
+
 
 player_struct STRUCT 
     head_x dword ?
@@ -40,7 +46,7 @@ player1 player_struct {}
 player2 player_struct {}
 
 .const 
-out_format_int byte '%d', 20h,0
+out_format_int byte '%u', 20h,0
 
 .code
 
@@ -52,14 +58,14 @@ _div_part PROC @player_y:dword,@player_x:dword,@size:dword
     mov edx, 1400
     sub edx, @size
     mov eax, 0ffffffh
-    .if @player_y >= ecx
+    .if @player_y > ecx
         sub @player_y, 2400
         sub @player_x, 700
         invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@size, @size,h_dc_bmp,0,0,@size,@size,eax
     .elseif @player_y < 1200
         sub @player_x, 700
         invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@size, @size,h_dc_bmp,0,0,@size,@size,eax
-    .elseif @player_x >= edx
+    .elseif @player_x > edx
         sub @player_y, 1200
         sub @player_x, 1400
         invoke TransparentBlt,h_dc_buffer[4*esi],@player_y,@player_x,@size, @size,h_dc_bmp,0,0,@size,@size,eax
@@ -363,7 +369,7 @@ _draw_fast PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     ret
 _draw_fast ENDP
 
-_draw_large PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
+_draw_dizzy PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     local x,y
     mov eax, index_x
     imul eax, cell_size
@@ -372,6 +378,51 @@ _draw_large PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     imul eax, cell_size
     mov y, eax
 
+    .if dizzy_cnt == 0
+        invoke rand
+        xor edx,edx
+        mov ecx, 30
+        div ecx
+        sub edx, 15
+        .if edx > 0
+            add edx, 3
+        .else 
+            sub edx, 3
+        .endif
+        add x, edx
+        invoke rand
+        xor edx,edx
+        mov ecx, 30
+        div ecx
+        sub edx, 15
+        .if edx > 0
+            add edx,3
+        .else 
+            sub edx,3
+        .endif
+        add y, edx
+        inc dizzy_cnt
+    .else 
+        inc dizzy_cnt
+        .if dizzy_cnt == 6
+            mov dizzy_cnt, 0
+        .endif
+    .endif 
+
+    mov esi, frame_time
+    invoke StretchBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_dizzy_mask,0,0,50,50,SRCAND
+    invoke StretchBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_dizzy,0,0,50,50,SRCPAINT
+    ret
+_draw_dizzy ENDP
+
+_draw_large PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
+    local x,y
+    mov eax, index_x
+    imul eax, cell_size
+    mov x, eax
+    mov eax, index_y
+    imul eax, cell_size
+    mov y, eax
     mov esi, frame_time
     invoke StretchBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_large_mask,0,0,50,50,SRCAND
     invoke StretchBlt,h_dc_buffer[4*esi],y,x,cell_size, cell_size,h_dc_large,0,0,50,50,SRCPAINT
@@ -398,20 +449,36 @@ _draw_item PROC item:draw_struct,frame_time:dword
         invoke _draw_wall,item.x,item.y,frame_time 
     .elseif item.item == grass 
         invoke _draw_grass,item.x,item.y,frame_time
+    .elseif item.item == large  
+        invoke _draw_large,item.x,item.y,frame_time
+    .elseif item.item == large_eat
+        .if item.player == 1
+            mov player1.big_cnt,45000
+        .else
+            mov player2.big_cnt,45000
+        .endif
     .elseif item.item == emoji
         .if item.player == 1
-            mov player1.emoji_cnt, 500
+            .if item.state == 0
+                mov player1.emoji_cnt, 3000
+            .else
+                mov player1.emoji_cnt, 1
+            .endif
             mov eax ,item.state
             mov player1.emoji_kind, eax
         .else
-            mov player2.emoji_cnt, 500
+            .if item.state == 0
+                mov player2.emoji_cnt, 3000
+            .else
+                mov player2.emoji_cnt, 1
+            .endif
             mov eax ,item.state
             mov player2.emoji_kind, eax
         .endif
     .elseif item.item == fast
         invoke _draw_fast,item.x,item.y,frame_time
-    .elseif item.item == large
-        invoke _draw_large,item.x,item.y,frame_time
+    .elseif item.item == dizzy
+        invoke _draw_dizzy,item.x,item.y,frame_time
     .endif
     .if player1.emoji_cnt != 0
         dec player1.emoji_cnt
@@ -420,6 +487,14 @@ _draw_item PROC item:draw_struct,frame_time:dword
     .if player2.emoji_cnt != 0
         dec player2.emoji_cnt
         invoke _draw_emoji,2,player2.emoji_kind,frame_time
+    .endif
+    dec player1.big_cnt
+    .if player1.big_cnt == 0ffffffffh
+        mov player1.big_cnt, 0
+    .endif
+    dec player2.big_cnt
+    .if player2.big_cnt == 0ffffffffh
+        mov player2.big_cnt, 0
     .endif
     ret
 _draw_item ENDP

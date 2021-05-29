@@ -16,7 +16,8 @@ includelib  winmm.lib
 
 includelib msvcrt.lib
 
-public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji,h_dc_player2_body,h_dc_player2_head,h_dc_player2_tail,h_dc_wall,h_dc_large,h_dc_fast,h_dc_large_mask
+public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji,h_dc_player2_body,h_dc_player2_head,h_dc_player2_tail,h_dc_wall,h_dc_dizzy,h_dc_fast,h_dc_dizzy_mask,h_dc_large_mask,h_dc_large,is_end
+public fps,player1_reverse,player2_reverse
 
 .data
 
@@ -25,12 +26,15 @@ player1_dir dword 2
 player1_now_dir dword 2
 player2_dir dword 4
 player2_now_dir dword 4
-fps dword 4000
+player1_reverse dword 0
+player2_reverse dword 0
+fps dword 5000
 now_window_state dword 1
 buffer_cnt dword 0
 create_buffer dword 1
 buffer_index dword 0
 is_show dword 0
+is_end dword 0
 
 dw1m dword 1000000
 
@@ -60,6 +64,8 @@ h_dc_apple_mask dword ?
 h_dc_wall dword ?
 h_dc_grass dword ?
 h_dc_emoji dword ?
+h_dc_dizzy dword ?
+h_dc_dizzy_mask dword ?
 h_dc_large dword ?
 h_dc_large_mask dword ?
 h_dc_fast dword ?
@@ -71,13 +77,13 @@ h_dc_buffer dword buffer_size dup (?)
 h_dc_buffer_size dword buffer_size dup(?)
 
 
+extern draw_list:draw_struct,draw_list_size:dword
 .code
 
 printf PROTO C :dword, :vararg
 _draw_item PROTO, :draw_struct,:dword
 _draw_map PROTO, :dword,:dword   
 _build_map PROTO
-extern draw_list:draw_struct,draw_list_size:dword
 
 _create_background PROC
     local h_dc, h_bmp_background, @cnt
@@ -201,6 +207,20 @@ _create_background PROC
     invoke	DeleteObject,h_bmp
 
     invoke  CreateCompatibleDC, h_dc
+    mov h_dc_dizzy, eax
+    invoke LoadBitmap,h_instance, dizzy
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_dizzy, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_dizzy_mask, eax
+    invoke LoadBitmap,h_instance, dizzy_mask
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_dizzy_mask, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
     mov h_dc_large, eax
     invoke LoadBitmap,h_instance, large
     mov h_bmp, eax
@@ -242,6 +262,13 @@ _set_show PROC
             fistp time2
             mov eax,dword ptr time2
         .endw
+        .if is_end != 0
+            mov create_buffer, 0
+            .if
+            .elseif is_end == 2
+            .elseif is_end == 3
+            .endif
+        .endif
     .endw
     ret
 _set_show ENDP
@@ -286,6 +313,13 @@ _create_buffer PROC
         jz main_loop_end
         .while buffer_cnt != 0
         .endw
+
+        .if player1_reverse > 0
+            dec player1_reverse
+        .endif
+        .if player2_reverse > 0
+            dec player2_reverse
+        .endif
 
         invoke _draw_map, player1_dir, player2_dir
         mov eax, player1_dir 
@@ -333,22 +367,53 @@ _init PROC
 _init ENDP
 
 _check_operation PROC 
-    .if eax == key_w && player1_now_dir != 3
-        mov player1_dir, 1
-    .elseif eax == key_s &&  player1_now_dir != 1
-        mov player1_dir, 3
-    .elseif eax == key_a &&  player1_now_dir != 2
-        mov player1_dir, 4
-    .elseif eax == key_d &&  player1_now_dir != 4
-        mov player1_dir, 2
-    .elseif eax == key_up && player2_now_dir != 3
-        mov player2_dir, 1
-    .elseif eax == key_down &&  player2_now_dir != 1
-        mov player2_dir, 3
-    .elseif eax == key_left &&  player2_now_dir != 2
-        mov player2_dir, 4
-    .elseif eax == key_right &&  player2_now_dir != 4
-        mov player2_dir, 2
+
+    .if eax == key_w || eax == key_s || eax == key_a || eax == key_d ; 玩家一的操作
+        .if player1_reverse == 0 ; 玩家一不处于眩晕状态
+            .if eax == key_w && player1_now_dir != 3
+                mov player1_dir, 1
+            .elseif eax == key_s &&  player1_now_dir != 1
+                mov player1_dir, 3
+            .elseif eax == key_a &&  player1_now_dir != 2
+                mov player1_dir, 4
+            .elseif eax == key_d &&  player1_now_dir != 4
+                mov player1_dir, 2
+            .endif
+        .else ; 玩家一处于眩晕状态
+            .if eax == key_s && player1_now_dir != 3
+                mov player1_dir, 1
+            .elseif eax == key_w &&  player1_now_dir != 1
+                mov player1_dir, 3
+            .elseif eax == key_d &&  player1_now_dir != 2
+                mov player1_dir, 4
+            .elseif eax == key_a &&  player1_now_dir != 4
+                mov player1_dir, 2
+            .endif
+        .endif
+    .endif
+
+    .if eax == key_up || eax == key_down || eax == key_left || eax == key_right ; 玩家二的操作
+        .if player2_reverse == 0 ; 玩家二不处于眩晕状态
+            .if eax == key_up && player2_now_dir != 3
+                mov player2_dir, 1
+            .elseif eax == key_down &&  player2_now_dir != 1
+                mov player2_dir, 3
+            .elseif eax == key_left &&  player2_now_dir != 2
+                mov player2_dir, 4
+            .elseif eax == key_right &&  player2_now_dir != 4
+                mov player2_dir, 2
+            .endif
+        .else ; 玩家二处于眩晕状态
+            .if eax == key_down && player2_now_dir != 3
+                mov player2_dir, 1
+            .elseif eax == key_up &&  player2_now_dir != 1
+                mov player2_dir, 3
+            .elseif eax == key_right &&  player2_now_dir != 2
+                mov player2_dir, 4
+            .elseif eax == key_left &&  player2_now_dir != 4
+                mov player2_dir, 2
+            .endif
+        .endif
     .endif
     ret
 _check_operation ENDP
