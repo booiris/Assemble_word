@@ -262,13 +262,6 @@ _set_show PROC
             fistp time2
             mov eax,dword ptr time2
         .endw
-        .if is_end != 0
-            mov create_buffer, 0
-            .if
-            .elseif is_end == 2
-            .elseif is_end == 3
-            .endif
-        .endif
     .endw
     ret
 _set_show ENDP
@@ -314,6 +307,11 @@ _create_buffer PROC
         .while buffer_cnt != 0
         .endw
 
+        .if is_end != 0
+            mov create_buffer, 0
+            ret
+        .endif
+
         .if player1_reverse > 0
             dec player1_reverse
         .endif
@@ -326,10 +324,26 @@ _create_buffer PROC
         mov player1_now_dir, eax
         mov eax, player2_dir 
         mov player2_now_dir, eax
+        mov ecx, buffer_size
 
+
+        .if is_end != 0
+            mov ecx, 1
+            .if is_end ==1
+
+            .elseif is_end == 2
+            .elseif is_end == 3
+                mov ecx,25
+            .elseif is_end == 4
+                mov ecx,25
+            .elseif is_end == 5
+                mov ecx,25
+            .endif
+        .endif
+        
         mov @cnt, 0
-        .while @cnt < buffer_size
-
+        .while @cnt < ecx
+            push ecx
             mov esi, @cnt
             invoke	BitBlt,h_dc_buffer[4*esi],0,0,1206,729,h_dc_background,0,0,SRCCOPY
             mov ecx, 4
@@ -350,7 +364,9 @@ _create_buffer PROC
                 loop draw_loop
             inc buffer_cnt
             inc @cnt
+            pop ecx
         .endw
+
         jmp main_loop
     
     main_loop_end:

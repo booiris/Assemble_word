@@ -167,6 +167,127 @@ _get_nxt_pos PROC uses edx ebx, now_pos:dword,dir:dword
     ret
 _get_nxt_pos ENDP
 
+_judge_win PROC uses esi edi, player1_dir:dword,player2_dir:dword
+	;0：输赢未定；1：1获胜；2：2获胜；3：平手
+	local pos_head1, pos_head2
+
+	assume esi:ptr point_struct
+	mov esi, offset player1_list
+	mov edi, offset player1_size
+	mov ecx, 0
+    .while ecx != [edi] 
+        push ecx
+        imul ecx,12
+        mov eax, [esi+ecx].part
+		mov edx, [esi+ecx].pos
+        .if  eax == player1_head 
+			mov pos_head1,edx
+			.break
+		.endif
+		pop ecx
+        inc ecx
+    .endw
+
+	mov esi, offset player2_list
+	mov edi, offset player2_size
+	mov ecx, 0
+    .while ecx != [edi] 
+        push ecx
+        imul ecx,12
+        mov eax, [esi+ecx].part
+		mov edx, [esi+ecx].pos
+        .if  eax == player2_head 
+			mov pos_head2,edx
+			.break
+		.endif
+		pop ecx
+        inc ecx
+    .endw
+
+	mov eax, pos_head1
+	mov ebx, pos_head2
+	.if eax == ebx
+		mov ecx, player1_size
+		mov edx, player2_size
+		.if ecx == edx
+			mov edx, 5
+		.elseif ecx < edx
+			mov edx, 4
+		.else
+			mov edx, 3
+		.endif
+		jmp LJ_End
+	.endif
+
+	mov eax, 0
+	mov ebx, 0
+
+	mov esi, offset player1_list
+	mov edi, offset player1_size
+	mov ecx, 0
+	.while ecx != [edi] 
+		push ecx
+		imul ecx,12
+		mov edx, [esi+ecx].pos
+		.if  edx == pos_head2 
+			mov eax, 1
+			.break
+		.endif
+		pop ecx
+		inc ecx
+	.endw
+
+	mov esi, offset player2_list
+	mov edi, offset player2_size
+	mov ecx, 0
+	.while ecx != [edi] 
+		push ecx
+		imul ecx,12
+		mov edx, [esi+ecx].pos
+		.if  edx == pos_head1 
+			mov ebx, 1
+			.break
+		.endif
+		pop ecx
+		inc ecx
+	.endw
+
+
+	.if eax == 0
+		.if ebx == 0
+			mov edx, 0
+		.else
+			mov edx, 2
+		.endif
+	.else
+		.if ebx == 0
+			mov edx, 1
+		.else
+			mov ecx, player1_size
+			mov edx, player2_size
+			.if ecx == edx
+				mov edx, 5
+			.elseif ecx < edx
+				mov edx, 2
+			.else
+				mov edx, 1
+			.endif
+		.endif
+	.endif
+
+LJ_End:
+	mov eax, edx
+    .if eax == 5
+        invoke _create_draw_item, pos_head1, 1, emoji, 1, 1
+        invoke _create_draw_item, pos_head2, 1, emoji, 1, 2
+    .elseif eax == 1 || eax == 3
+        invoke _create_draw_item, pos_head2, 1, emoji, 1, 2
+    .elseif eax == 2 || eax == 4
+        invoke _create_draw_item, pos_head1, 1, emoji, 1, 1
+    .endif
+	ret
+_judge_win ENDP
+
 _draw_snake PROC uses esi edi, player:dword,enemy:dword, dir:dword
     local father_dir,father_pos,snake_head,snake_body,snake_tail,reverse
 
@@ -402,6 +523,11 @@ _draw_map PROC player1_dir:dword,player2_dir:dword
         .endif
         inc @index
     .endw
+
+	invoke _judge_win, player1_dir, player2_dir
+    .if is_end == 0
+	    mov is_end, eax
+    .endif
 
     ret
 _draw_map ENDP
