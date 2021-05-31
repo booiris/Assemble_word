@@ -16,6 +16,7 @@ large        equ 113
 large_mask   equ 114
 dizzy        equ 115
 dizzy_mask        equ 116
+num         equ 117
 key_s equ 53h
 key_w equ 57h
 key_a equ 41h

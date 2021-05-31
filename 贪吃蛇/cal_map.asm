@@ -17,7 +17,7 @@ includelib  winmm.lib
 includelib msvcrt.lib
 
 printf PROTO C :dword, :vararg
-public draw_list,draw_list_size,_build_map,_draw_map
+public draw_list,draw_list_size,_build_map,_draw_map,player1_size,player2_size
 
 extern fps:dword, player1_reverse:dword, player2_reverse:dword,is_end:dword
 

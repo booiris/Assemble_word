@@ -18,6 +18,7 @@
 #define large_mask        114
 #define dizzy             115
 #define dizzy_mask        116
+#define num               117
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ICO_MAIN	ICON		"Main.ico"
@@ -38,3 +39,4 @@ large       BITMAP         "large.bmp"
 large_mask  BITMAP         "large_mask.bmp"
 dizzy       BITMAP         "dizzy.bmp"
 dizzy_mask  BITMAP         "dizzy_mask.bmp"
+num         BITMAP         "num.bmp"

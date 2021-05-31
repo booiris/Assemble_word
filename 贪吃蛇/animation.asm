@@ -22,7 +22,7 @@ rand	PROTO C
 printf PROTO C :dword, :vararg
 public _draw_item
 
-extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword,h_dc_wall:dword,h_dc_fast:dword,h_dc_dizzy:dword,h_dc_dizzy_mask:dword,h_dc_large:dword,h_dc_large_mask:dword
+extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword,h_dc_wall:dword,h_dc_fast:dword,h_dc_dizzy:dword,h_dc_dizzy_mask:dword,h_dc_large:dword,h_dc_large_mask:dword,player1_size:dword,player2_size:dword,h_dc_num:dword
 
 
 .data
@@ -429,6 +429,53 @@ _draw_large PROC uses esi,index_x:dword, index_y:dword,frame_time:dword
     ret
 _draw_large ENDP
 
+_draw_num PROC uses esi, index_x:dword, index_y:dword, frame_time:dword, player_size:dword
+    local x,y,num1,num2,num3
+    mov eax, index_x
+    imul eax, cell_size
+    mov x, eax
+    sub x, 25
+    mov eax, index_y
+    imul eax, cell_size
+    mov y, eax
+    sub y, 25
+    mov esi, frame_time
+
+    mov eax , player_size
+    mov ecx, 10
+
+    xor edx, edx
+    div ecx
+    imul edx, 100
+    mov num3, edx
+
+    xor edx, edx
+    div ecx
+    imul edx, 100
+    mov num2, edx
+
+    xor edx, edx
+    div ecx
+    imul edx, 100
+    mov num1, edx
+
+    invoke StretchBlt,h_dc_bmp,0,0,50, 50,h_dc_num,num1,0,100,100,SRCCOPY
+    mov eax, 0ffffffh
+    invoke TransparentBlt,h_dc_buffer[4*esi],y,x,50, 50,h_dc_bmp,0,0,50,50,eax
+
+    add y, 50
+    invoke StretchBlt,h_dc_bmp,0,0,50, 50,h_dc_num,num2,0,100,100,SRCCOPY
+    mov eax, 0ffffffh
+    invoke TransparentBlt,h_dc_buffer[4*esi],y,x,50, 50,h_dc_bmp,0,0,50,50,eax
+
+    add y, 50
+    invoke StretchBlt,h_dc_bmp,0,0,50, 50,h_dc_num,num3,0,100,100,SRCCOPY
+    mov eax, 0ffffffh
+    invoke TransparentBlt,h_dc_buffer[4*esi],y,x,50, 50,h_dc_bmp,0,0,50,50,eax
+
+    ret
+_draw_num ENDP
+
 _draw_item PROC item:draw_struct,frame_time:dword
     ; invoke printf, offset out_format_int, item.item
     .if item.item == player1_head
@@ -496,6 +543,11 @@ _draw_item PROC item:draw_struct,frame_time:dword
     .if player2.big_cnt == 0ffffffffh
         mov player2.big_cnt, 0
     .endif
+
+    invoke _draw_num, 1, 1 ,frame_time, player1_size
+    invoke _draw_num, 1, 21 ,frame_time, player2_size
+
+
     ret
 _draw_item ENDP
 
