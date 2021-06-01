@@ -23,7 +23,6 @@ extern fps:dword, player1_reverse:dword, player2_reverse:dword,is_end:dword
 
 .data 
 map dword window_x_len*window_y_len dup (0)
-const_map dword window_x_len*window_y_len dup (0)
 
 .const
 out_format_int byte '%d', 20h,0
@@ -514,16 +513,6 @@ _draw_map PROC player1_dir:dword,player2_dir:dword
         inc @index
     .endw
 
-    mov @index, 0
-    .while @index < window_x_len * window_y_len
-        mov eax, @index 
-        mov ecx, const_map[4*eax]
-        .if ecx == grass
-             invoke _create_draw_item, @index,1,grass,0,0
-        .endif
-        inc @index
-    .endw
-
 	invoke _judge_win, player1_dir, player2_dir
     .if is_end == 0
 	    mov is_end, eax
@@ -536,7 +525,7 @@ _draw_map ENDP
 _build_map PROC uses esi
     ; ³õÊ¼»¯µØÍ¼
     ; Éß
-    mov eax, 12*window_x_len+10
+    mov eax, 12*window_x_len+2
     mov ecx, player1_size
     imul ecx, 12
     mov player1_list[ecx].dir,  2
@@ -620,23 +609,6 @@ _build_map PROC uses esi
     invoke _create_apple
     invoke _create_apple
     
-    ; ²Ý
-    mov eax, 9*window_x_len+10
-    mov const_map[4*eax], grass
-    mov eax, 9*window_x_len+11
-    mov const_map[4*eax], grass
-    mov eax, 9*window_x_len+12
-    mov const_map[4*eax], grass
-    mov eax, 9*window_x_len+13
-    mov const_map[4*eax], grass
-    mov eax, 10*window_x_len+10
-    mov const_map[4*eax], grass
-    mov eax, 10*window_x_len+11
-    mov const_map[4*eax], grass
-    mov eax, 10*window_x_len+12
-    mov const_map[4*eax], grass
-    mov eax, 10*window_x_len+13
-    mov const_map[4*eax], grass
 
     ret
 _build_map ENDP

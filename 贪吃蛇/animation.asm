@@ -20,7 +20,7 @@ includelib msvcrt.lib
 
 rand	PROTO C
 printf PROTO C :dword, :vararg
-public _draw_item
+public _draw_item,_draw_final
 
 extern h_dc_buffer:dword,h_dc_player1_body:dword, h_dc_player1_head:dword, speed:dword,h_dc_bmp:dword,h_dc_player1_tail:dword,h_dc_apple:dword,h_dc_apple_mask:dword,h_dc_grass:dword,h_dc_emoji:dword,h_dc_player2_head:dword,h_dc_player2_tail:dword,h_dc_player2_body:dword,h_dc_wall:dword,h_dc_fast:dword,h_dc_dizzy:dword,h_dc_dizzy_mask:dword,h_dc_large:dword,h_dc_large_mask:dword,player1_size:dword,player2_size:dword,h_dc_num:dword
 
@@ -494,20 +494,18 @@ _draw_item PROC item:draw_struct,frame_time:dword
         invoke _draw_apple,item.x,item.y,frame_time
     .elseif item.item == wall 
         invoke _draw_wall,item.x,item.y,frame_time 
-    .elseif item.item == grass 
-        invoke _draw_grass,item.x,item.y,frame_time
     .elseif item.item == large  
         invoke _draw_large,item.x,item.y,frame_time
     .elseif item.item == large_eat
         .if item.player == 1
-            mov player1.big_cnt,45000
+            mov player1.big_cnt,350
         .else
-            mov player2.big_cnt,45000
+            mov player2.big_cnt,350
         .endif
     .elseif item.item == emoji
         .if item.player == 1
             .if item.state == 0
-                mov player1.emoji_cnt, 3000
+                mov player1.emoji_cnt, 50
             .else
                 mov player1.emoji_cnt, 1
             .endif
@@ -515,7 +513,7 @@ _draw_item PROC item:draw_struct,frame_time:dword
             mov player1.emoji_kind, eax
         .else
             .if item.state == 0
-                mov player2.emoji_cnt, 3000
+                mov player2.emoji_cnt, 50
             .else
                 mov player2.emoji_cnt, 1
             .endif
@@ -527,6 +525,11 @@ _draw_item PROC item:draw_struct,frame_time:dword
     .elseif item.item == dizzy
         invoke _draw_dizzy,item.x,item.y,frame_time
     .endif
+
+    ret
+_draw_item ENDP
+
+_draw_final PROC frame_time:dword
     .if player1.emoji_cnt != 0
         dec player1.emoji_cnt
         invoke _draw_emoji,1,player1.emoji_kind,frame_time
@@ -547,8 +550,17 @@ _draw_item PROC item:draw_struct,frame_time:dword
     invoke _draw_num, 1, 1 ,frame_time, player1_size
     invoke _draw_num, 1, 21 ,frame_time, player2_size
 
+    invoke _draw_grass, 9, 10, frame_time
+    invoke _draw_grass, 9, 11, frame_time
+    invoke _draw_grass, 9, 12, frame_time
+    invoke _draw_grass, 9, 13, frame_time
+    invoke _draw_grass, 10, 10, frame_time
+    invoke _draw_grass, 10, 11, frame_time
+    invoke _draw_grass, 10, 12, frame_time
+    invoke _draw_grass, 10, 13, frame_time
 
     ret
-_draw_item ENDP
+_draw_final ENDP
+
 
 end

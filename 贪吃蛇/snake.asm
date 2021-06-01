@@ -16,7 +16,7 @@ includelib  winmm.lib
 
 includelib msvcrt.lib
 
-public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji,h_dc_player2_body,h_dc_player2_head,h_dc_player2_tail,h_dc_wall,h_dc_dizzy,h_dc_fast,h_dc_dizzy_mask,h_dc_large_mask,h_dc_large,is_end,h_dc_num
+public h_dc_buffer, h_dc_player1_body, h_dc_player1_head, speed,h_dc_bmp,h_dc_player1_tail,h_dc_apple,h_dc_apple_mask,h_dc_grass,h_dc_emoji,h_dc_player2_body,h_dc_player2_head,h_dc_player2_tail,h_dc_wall,h_dc_dizzy,h_dc_fast,h_dc_dizzy_mask,h_dc_large_mask,h_dc_large,is_end,h_dc_num,h_dc_begin,h_dc_begin_mask
 public fps,player1_reverse,player2_reverse
 
 .data
@@ -45,6 +45,11 @@ out_format_int byte '%u', 20h,0
 str_main_caption byte '贪吃蛇', 0
 str_class_name byte 'main_window_class', 0
 str_status_class_name byte 'status_class', 0
+str_caption_edit byte '游戏结束', 0
+str_win_win byte '平局', 0
+str_1_win byte '1号玩家胜利', 0
+str_2_win byte '2号玩家胜利', 0
+str_button byte 'button', 0
 
 ; invoke MessageBox, h_window_m ain, NULL, NULL, MB_OK
 
@@ -71,8 +76,9 @@ h_dc_large_mask dword ?
 h_dc_fast dword ?
 h_dc_bmp dword ?
 h_dc_bmp_size dword ?
-h_dc_time dword ?
 h_dc_num dword ?
+h_dc_begin dword ?
+h_dc_begin_mask dword ?
 
 h_dc_buffer dword buffer_size dup (?)
 h_dc_buffer_size dword buffer_size dup(?)
@@ -84,6 +90,7 @@ extern draw_list:draw_struct,draw_list_size:dword
 printf PROTO C :dword, :vararg
 _draw_item PROTO, :draw_struct,:dword
 _draw_map PROTO, :dword,:dword   
+_draw_final PROTO, :dword   
 _build_map PROTO
 
 _create_background PROC
@@ -242,6 +249,20 @@ _create_background PROC
     invoke SelectObject,h_dc_num, h_bmp
     invoke	DeleteObject,h_bmp
 
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_begin, eax
+    invoke LoadBitmap,h_instance, begin
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_begin, h_bmp
+    invoke	DeleteObject,h_bmp
+
+    invoke  CreateCompatibleDC, h_dc
+    mov h_dc_begin_mask, eax
+    invoke LoadBitmap,h_instance, begin_mask
+    mov h_bmp, eax
+    invoke SelectObject,h_dc_begin_mask, h_bmp
+    invoke	DeleteObject,h_bmp
+
     invoke ReleaseDC,h_window_main,h_dc 
     invoke _build_map
     ret 
@@ -317,6 +338,13 @@ _create_buffer PROC
 
         .if is_end != 0
             mov create_buffer, 0
+            .if is_end == 1||is_end == 3
+                invoke MessageBox, h_window_main, offset str_1_win, offset str_caption_edit, MB_OK
+            .elseif is_end == 2||is_end == 4
+                invoke MessageBox, h_window_main, offset str_2_win, offset str_caption_edit, MB_OK
+            .else 
+                invoke MessageBox, h_window_main, offset str_win_win, offset str_caption_edit, MB_OK
+            .endif
             ret
         .endif
 
@@ -336,15 +364,9 @@ _create_buffer PROC
 
 
         .if is_end != 0
-            mov ecx, 1
-            .if is_end ==1
-
-            .elseif is_end == 2
-            .elseif is_end == 3
-                mov ecx,25
-            .elseif is_end == 4
-                mov ecx,25
-            .elseif is_end == 5
+            .if is_end < 3
+                mov ecx, 1
+            .else
                 mov ecx,25
             .endif
         .endif
@@ -370,6 +392,7 @@ _create_buffer PROC
                     loop draw_list_loop
                 pop ecx
                 loop draw_loop
+            invoke _draw_final, @cnt
             inc buffer_cnt
             inc @cnt
             pop ecx
@@ -383,10 +406,10 @@ _create_buffer ENDP
 
 _init PROC
     call _create_background
+    ; invoke CreateWindowEx, NULL, offset str_button , NULL, WS_CHILD or WS_VISIBLE, 130,150, 58, 98, h_window_main, 1, h_instance, NULL
     invoke CreateThread, NULL, 0,_draw_window ,NULL,0,NULL
     invoke CreateThread, NULL, 0,_create_buffer ,NULL,0,NULL
     invoke CreateThread, NULL, 0, _set_show,NULL , 0, NULL
-    mov h_dc_time, eax
     ret
 _init ENDP
 
@@ -455,7 +478,6 @@ _close PROC
         inc @cnt
     .endw
 
-    invoke timeKillEvent, h_dc_time
     invoke DeleteDC, h_dc_background
     invoke DeleteDC, h_dc_player1_head
     invoke DeleteDC, h_dc_player1_body
@@ -475,7 +497,13 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         push h_window
         pop h_window_main
         call _init
-
+     .elseif eax == WM_COMMAND
+        mov eax, wParam
+        mov ecx, wParam
+        shr eax, 16
+        .if ax == BN_CLICKED
+            invoke MessageBox, h_window_main, offset str_1_win, offset str_caption_edit, MB_OK
+        .endif
     .elseif eax == WM_KEYDOWN
         mov eax, wParam
         call _check_operation
