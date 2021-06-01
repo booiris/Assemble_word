@@ -406,7 +406,6 @@ _create_buffer ENDP
 
 _init PROC
     call _create_background
-    ; invoke CreateWindowEx, NULL, offset str_button , NULL, WS_CHILD or WS_VISIBLE, 130,150, 58, 98, h_window_main, 1, h_instance, NULL
     invoke CreateThread, NULL, 0,_draw_window ,NULL,0,NULL
     invoke CreateThread, NULL, 0,_create_buffer ,NULL,0,NULL
     invoke CreateThread, NULL, 0, _set_show,NULL , 0, NULL
@@ -497,13 +496,6 @@ _proc_main_window PROC uses ebx edi esi, h_window, u_msg, wParam, lParam
         push h_window
         pop h_window_main
         call _init
-     .elseif eax == WM_COMMAND
-        mov eax, wParam
-        mov ecx, wParam
-        shr eax, 16
-        .if ax == BN_CLICKED
-            invoke MessageBox, h_window_main, offset str_1_win, offset str_caption_edit, MB_OK
-        .endif
     .elseif eax == WM_KEYDOWN
         mov eax, wParam
         call _check_operation
